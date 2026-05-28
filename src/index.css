@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@theme {
+  --color-duo-green: #58cc02;
+  --color-duo-dark-green: #46a302;
+  --color-duo-dark: #131f24;
+  --color-duo-darker: #0a1012;
+  --color-duo-gray: #afafaf;
+  --color-duo-border: #37464f;
+  --color-duo-blue: #84d8ff;
+  --color-duo-red: #ff4b4b;
+  --color-duo-orange: #ff9600;
+  --color-duo-yellow: #ffc800;
+  --color-duo-active: #2e383d;
+  --color-duo-active-border: #4b585f;
+
+  --shadow-brutal: 0 4px 0 0 #000;
+  --shadow-brutal-lg: 0 8px 0 0 #000;
+  --shadow-brutal-green: 0 4px 0 0 var(--color-duo-dark-green);
+  --shadow-brutal-orange: 0 4px 0 0 #e68700;
+  --shadow-brutal-blue: 0 4px 0 0 #1cb0f6;
+  --shadow-sidebar-active: 0 4px 0 0 var(--color-duo-active-border);
+  
+  --border-width-3: 3px;
+}
+
+/* DinRound Pro */
+@font-face {
+  font-family: 'DinRound';
+  src: url('./assets/fonts/dinroundpro.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DinRound';
+  src: url('./assets/fonts/dinroundpro_medi.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DinRound';
+  src: url('./assets/fonts/dinroundpro_bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DinRound';
+  src: url('./assets/fonts/dinroundpro_black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DinRound';
+  src: url('./assets/fonts/dinroundpro_light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+/* Kantumruy Pro */
+@font-face {
+  font-family: 'Kantumruy Pro';
+  src: url('./assets/fonts/KantumruyPro-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Kantumruy Pro';
+  src: url('./assets/fonts/KantumruyPro-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Kantumruy Pro';
+  src: url('./assets/fonts/KantumruyPro-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Kantumruy Pro';
+  src: url('./assets/fonts/KantumruyPro-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+html {
+  font-size: 110%;
+}
+
+@layer base {
+  body {
+    @apply bg-duo-dark text-white antialiased;
+    font-family: 'DinRound', 'Kantumruy Pro', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-khmer {
+    font-family: 'Kantumruy Pro', 'DinRound', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .brutal-button {
+    @apply relative transition-all active:translate-y-[2px] active:shadow-none font-bold py-3.5 px-5 rounded-xl uppercase tracking-wider text-base;
+  }
+  
+  .brutal-button-green {
+    @apply bg-duo-green text-white shadow-brutal-green hover:bg-[#61e002] active:translate-y-[4px];
+  }
+
+  .brutal-button-orange {
+    @apply bg-duo-orange text-white shadow-brutal-orange hover:bg-[#ffaa2e] active:translate-y-[4px];
+  }
+
+  .icon-border-thin {
+    filter: drop-shadow(0.5px 0 0 white) 
+            drop-shadow(-0.5px 0 0 white) 
+            drop-shadow(0 0.5px 0 white) 
+            drop-shadow(0 -0.5px 0 white) 
+            drop-shadow(0.3px 0.3px 0 white) 
+            drop-shadow(-0.3px 0.3px 0 white) 
+            drop-shadow(0.3px -0.3px 0 white) 
+            drop-shadow(-0.3px -0.3px 0 white);
+  }
+
+  .brutal-button-gray {
+    @apply bg-transparent border-2 border-duo-border text-duo-gray hover:bg-white/5;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-bold uppercase tracking-widest text-sm text-duo-gray hover:bg-white/5;
+  }
+
+  .sidebar-item.active {
+    @apply bg-duo-active text-duo-green border-2 border-duo-active-border shadow-sidebar-active;
+  }
+}
