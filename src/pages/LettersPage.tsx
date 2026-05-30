@@ -1,48 +1,99 @@
-interface LetterCardProps {
-  char?: string
-  isEmpty?: boolean
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../lib/supabase'
+import { Loader } from '../components/ui/Loader'
+
+interface Letter {
+  id: string
+  char: string
+  type: 'CONSONANT' | 'VOWEL' | 'NUMBER'
+  order: number
+  audio_src: string | null
 }
 
-const LetterCard = ({ char, isEmpty }: LetterCardProps) => {
-  if (isEmpty || !char) {
-    return (
-      <div className="aspect-square rounded-2xl border-[0.5px] border-white/5 bg-white/5 opacity-10" />
-    )
+interface LetterCardProps {
+  char: string
+  audioSrc?: string | null
+  onClick?: (audioSrc: string) => void
+}
+
+const LetterCard = ({ char, audioSrc, onClick }: LetterCardProps) => {
+  const handleClick = () => {
+    if (onClick && audioSrc) {
+      onClick(audioSrc)
+    }
   }
 
   return (
-    <button className="aspect-square rounded-2xl border-2 border-white/10 bg-[#1a232e] hover:bg-[#252f3d] transition-all flex flex-col items-center justify-center group relative active:translate-y-[2px] shadow-[0_4px_0_0_rgba(255,255,255,0.05)] active:shadow-none">
+    <button 
+      onClick={handleClick}
+      className="w-full aspect-square rounded-xl border-2 border-white/10 bg-[#1a232e] hover:bg-[#252f3d] transition-all flex items-center justify-center group relative active:translate-y-0.5 shadow-[0_3px_0_0_rgba(255,255,255,0.05)] active:shadow-none"
+    >
       <span className="text-2xl font-black text-white font-khmer">{char}</span>
     </button>
   )
 }
 
 export const LettersPage = () => {
-  const letters = [
-    { char: 'ក' }, { char: 'ខ' }, { char: 'គ' }, { char: 'ឃ' }, { char: 'ង' }, { char: 'ច' },
-    { char: 'ឆ' }, { char: 'ជ' }, { char: 'ឈ' }, { char: 'ញ' }, { char: 'ដ' }, { char: 'ឋ' },
-    { char: 'ឌ' }, { char: 'ឍ' }, { char: 'ណ' }, { char: 'ត' }, { char: 'ថ' }, { char: 'ទ' },
-    { char: 'ធ' }, { char: 'ន' }, { char: 'ប' }, { char: 'ផ' }, { char: 'ព' }, { char: 'ភ' },
-    { char: 'ម' }, { char: 'យ' }, { char: 'រ' }, { char: 'ល' }, { char: 'វ' }, { char: 'ស' },
-    { char: 'ហ' }, { char: 'ឡ' }, { char: 'អ' },
-    { isEmpty: true }, { isEmpty: true }, { isEmpty: true },
-  ]
+  const [letters, setLetters] = useState<Letter[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  const vowels = [
-    { char: 'ា' }, { char: 'ិ' }, { char: 'ី' }, { char: 'ឹ' }, { char: 'ឺ' }, { char: 'ុ' },
-    { char: 'ូ' }, { char: 'ួ' }, { char: 'ើ' }, { char: 'ឿ' }, { char: 'ៀ' }, { char: 'េ' },
-    { char: 'ែ' }, { char: 'ៃ' }, { char: 'ោ' }, { char: 'ៅ' }, { char: 'ុំ' }, { char: 'ំ' },
-    { char: 'ាំ' }, { char: 'ះ' }, { char: 'ុះ' }, { char: 'េះ' }, { char: 'ោះ' },
-    { isEmpty: true },
-  ]
+  useEffect(() => {
+    const fetchLetters = async () => {
+      setIsLoading(true)
+      const { data, error } = await supabase
+        .from('alphabets')
+        .select('*')
+        .order('order', { ascending: true })
 
-  const numbers = [
-    { char: '០' }, { char: '១' }, { char: '២' }, { char: '៣' }, { char: '៤' }, { char: '៥' },
-    { char: '៦' }, { char: '៧' }, { char: '៨' }, { char: '៩' }, { isEmpty: true }, { isEmpty: true },
-  ]
+      if (error) {
+        console.error('Error fetching letters:', error)
+      } else {
+        setLetters(data as Letter[])
+      }
+      setIsLoading(false)
+    }
+
+    fetchLetters()
+  }, [])
+
+  const handlePlaySound = (audioSrc: string) => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+
+    const newAudio = new Audio(audioSrc)
+    audioRef.current = newAudio
+
+    newAudio.play().catch(error => {
+      console.error("Error playing audio:", error)
+      if (audioRef.current === newAudio) {
+        audioRef.current = null
+      }
+    })
+
+    newAudio.onended = () => {
+      if (audioRef.current === newAudio) {
+        audioRef.current = null
+      }
+    }
+  }
+
+  const consonants = letters.filter(l => l.type === 'CONSONANT')
+  const vowels = letters.filter(l => l.type === 'VOWEL')
+  const numbers = letters.filter(l => l.type === 'NUMBER')
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 min-h-screen flex items-center justify-center">
+        <Loader className="w-12 h-12" />
+      </div>
+    )
+  }
 
   return (
-    <div className="py-12 px-4 max-w-[640px] mx-auto space-y-16">
+    <div className="py-12 px-4 max-w-160 mx-auto space-y-16">
       {/* Khmer Alphabet Section */}
       <section>
         <div className="mb-8 px-1">
@@ -52,12 +103,13 @@ export const LettersPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-6 gap-x-2.5 gap-y-8">
-          {letters.map((item, index) => (
+        <div className="grid grid-cols-5 gap-4">
+          {consonants.map((item) => (
             <LetterCard 
-              key={index} 
+              key={item.id} 
               char={item.char}
-              isEmpty={item.isEmpty}
+              audioSrc={item.audio_src}
+              onClick={handlePlaySound}
             />
           ))}
         </div>
@@ -72,12 +124,13 @@ export const LettersPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-6 gap-x-2.5 gap-y-8">
-          {vowels.map((item, index) => (
+        <div className="grid grid-cols-5 gap-4">
+          {vowels.map((item) => (
             <LetterCard 
-              key={index} 
+              key={item.id} 
               char={item.char}
-              isEmpty={item.isEmpty}
+              audioSrc={item.audio_src}
+              onClick={handlePlaySound}
             />
           ))}
         </div>
@@ -92,12 +145,13 @@ export const LettersPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-6 gap-x-2.5 gap-y-8">
-          {numbers.map((item, index) => (
+        <div className="grid grid-cols-5 gap-4">
+          {numbers.map((item) => (
             <LetterCard 
-              key={index} 
+              key={item.id} 
               char={item.char}
-              isEmpty={item.isEmpty}
+              audioSrc={item.audio_src}
+              onClick={handlePlaySound}
             />
           ))}
         </div>

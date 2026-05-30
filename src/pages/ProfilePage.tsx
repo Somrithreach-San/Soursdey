@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useState, type FC } from 'react'
 import { Clock, Pencil, AlertTriangle, Dumbbell, ChevronLeft, ChevronRight, LogOut } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { supabase } from '../lib/supabase'
 import streakAsset from '../assets/streak.png'
-import lily from '../assets/Lily.png'
+import { AvatarSelectionModal } from '../components/modals/AvatarSelectionModal'
+import { UsernameEditModal } from '../components/modals/UsernameEditModal'
+import { Loader } from '../components/ui/Loader'
+import type { User } from '@supabase/supabase-js'
 
 const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'completed' | 'warning' | 'inactive' | 'future' | 'empty', isCurrent?: boolean }) => {
   if (status === 'empty') return <div className="w-11 h-11" />
@@ -72,8 +76,57 @@ const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext }: { month:
   )
 }
 
-export const ProfilePage = () => {
-  const [currentMonthIndex, setCurrentMonthIndex] = useState(0) // 0 for May, 1 for June, etc.
+interface ProfilePageProps {
+  user: User | null;
+  userProfile: any;
+  userProgress: any[];
+  onUpdateUsername: (newUsername: string) => Promise<boolean>;
+  onUpdateAvatar: (newAvatar: string) => Promise<boolean>;
+}
+
+export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, userProgress, onUpdateUsername, onUpdateAvatar }) => {
+  const [currentMonthIndex, setCurrentMonthIndex] = useState(new Date().getMonth() - 4) // Start with May
+  const [logoutLoading, setLogoutLoading] = useState(false)
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
+  const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false)
+
+  const handleLogout = async () => {
+    if (logoutLoading) return
+    
+    setLogoutLoading(true)
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      window.location.reload()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    } finally {
+      setLogoutLoading(false)
+    }
+  }
+
+  const handleSaveUsername = async (newUsername: string) => {
+    const success = await onUpdateUsername(newUsername)
+    if (success) {
+      setIsUsernameModalOpen(false)
+      console.log('Username updated successfully!')
+    } else {
+      console.error('Failed to update username.')
+      // The modal will show an error message to the user
+    }
+    return success
+  }
+
+  const handleAvatarSelect = async (newAvatar: string) => {
+    const success = await onUpdateAvatar(newAvatar)
+    if (success) {
+      setIsAvatarModalOpen(false)
+      console.log('Avatar updated successfully!')
+    } else {
+      console.error('Failed to update avatar.')
+      // Optionally show an error message to the user
+    }
+  }
 
   const months = [
     { name: 'May', year: 2026, startDay: 5, daysCount: 31 },
@@ -84,26 +137,28 @@ export const ProfilePage = () => {
   const getDaysForMonth = (index: number) => {
     const days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future' }[] = []
     const month = months[index]
+    const today = new Date()
     
     for (let i = 1; i <= month.daysCount; i++) {
+      const currentDate = new Date(month.year, index + 4, i) // Adjust month index
+      
       let status: 'completed' | 'warning' | 'inactive' | 'future'
       
-      if (index === 0) { // May
-        if (i < 28) {
-          // Realistic streak: 6 days this month
-          if ([22, 23, 24, 25, 26, 27].includes(i)) {
-            status = 'completed'
-          } else {
-            status = 'inactive'
-          }
-        } else if (i === 28) {
-          status = 'inactive'
-        } else {
-          status = 'future'
-        }
-      } else { // June and beyond
+      if (currentDate > today) {
         status = 'future'
+      } else {
+        const dayCompleted = userProgress?.some(p => {
+          const progressDate = new Date(p.last_accessed)
+          return progressDate.toDateString() === currentDate.toDateString()
+        })
+
+        if (dayCompleted) {
+          status = 'completed'
+        } else {
+          status = 'inactive'
+        }
       }
+      
       days.push({ day: i, status })
     }
     return days
@@ -118,19 +173,41 @@ export const ProfilePage = () => {
       <section className="mb-10 pb-10 border-b-2 border-duo-border relative">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h1 className="text-3xl font-black text-white mb-2">Engly Lang</h1>
-            <p className="text-duo-gray font-bold text-lg mb-4">@englylang123</p>
-            <div className="flex items-center gap-2 text-duo-gray font-bold">
-              <Clock className="w-5 h-5" />
-              <span>Joined May 2026</span>
-            </div>
+            {userProfile ? (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <h1 className="text-3xl font-black text-white">{userProfile.username}</h1>
+                  <button onClick={() => setIsUsernameModalOpen(true)} className="p-1 rounded-full hover:bg-white/10 transition-colors">
+                    <Pencil className="w-5 h-5 text-duo-gray" />
+                  </button>
+                </div>
+                <p className="text-duo-gray font-bold text-lg mb-4">@{user?.email}</p>
+                <div className="flex items-center gap-2 text-duo-gray font-bold">
+                  <Clock className="w-5 h-5" />
+                  <span>Joined {new Date(userProfile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-32">
+                <Loader />
+              </div>
+            )}
           </div>
           
           <div className="relative">
             <div className="w-32 h-32 rounded-3xl bg-[#1a232e] border-2 border-white/10 flex items-center justify-center overflow-hidden shadow-[0_8px_0_0_rgba(0,0,0,0.2)]">
-              <img src={lily} alt="Profile" className="w-24 h-24 object-contain" />
+              {userProfile ? (
+                <img src={userProfile.avatar_url} alt="Profile" className="w-24 h-24 object-contain" />
+              ) : (
+                <div className="w-24 h-24 flex items-center justify-center">
+                  <Loader className="w-12 h-12" />
+                </div>
+              )}
             </div>
-            <button className="absolute -bottom-2 -right-2 p-3 bg-duo-green rounded-2xl border-2 border-white/20 shadow-[0_4px_0_0_#1a7f0e] hover:bg-duo-dark-green transition-all active:translate-y-0.5 active:shadow-none">
+            <button 
+              onClick={() => setIsAvatarModalOpen(true)}
+              className="absolute -bottom-2 -right-2 p-3 bg-duo-green rounded-2xl border-2 border-white/20 shadow-[0_4px_0_0_#1a7f0e] hover:bg-duo-dark-green transition-all active:translate-y-0.5 active:shadow-none"
+            >
               <Pencil className="w-5 h-5 text-white" />
             </button>
           </div>
@@ -155,14 +232,32 @@ export const ProfilePage = () => {
         {/* Logout Button */}
         <div className="flex justify-center mt-16">
           <button 
-            onClick={() => console.log('Logout clicked')}
-            className="flex items-center gap-2 px-6 py-3 bg-duo-red border-2 border-duo-red rounded-xl text-white font-bold uppercase tracking-wider shadow-[0_4px_0_0_#d33131] hover:bg-[#ff5c5c] active:translate-y-0.5 active:shadow-none transition-all"
+            onClick={handleLogout}
+            disabled={logoutLoading}
+            className="flex items-center gap-2 px-6 py-3 bg-duo-red border-2 border-duo-red rounded-xl text-white font-bold uppercase tracking-wider shadow-[0_4px_0_0_#d33131] hover:bg-[#ff5c5c] active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <LogOut className="w-5 h-5" />
-            Logout
+            {logoutLoading ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <LogOut className="w-5 h-5" />
+            )}
+            {logoutLoading ? 'Logging out...' : 'Logout'}
           </button>
         </div>
       </section>
+
+      <UsernameEditModal
+        isOpen={isUsernameModalOpen}
+        onClose={() => setIsUsernameModalOpen(false)}
+        onSave={handleSaveUsername}
+        currentUsername={userProfile?.username || ''}
+      />
+      <AvatarSelectionModal 
+        isOpen={isAvatarModalOpen} 
+        onClose={() => setIsAvatarModalOpen(false)} 
+        onSelect={handleAvatarSelect} 
+        currentAvatar={userProfile?.avatar_url} 
+      />
     </div>
   )
 }

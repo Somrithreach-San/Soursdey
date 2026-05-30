@@ -1,3 +1,5 @@
+'use client'
+
 import { Zap } from 'lucide-react'
 import { Button } from '../ui/Button'
 import diamond from '../../assets/diamond.png'
@@ -5,22 +7,29 @@ import hearts from '../../assets/hearts.png'
 import streak from '../../assets/streak.png'
 import subscription from '../../assets/subscription.png'
 
-export const RightSidebar = ({ onStoreClick }: { onStoreClick?: () => void }) => {
+export const RightSidebar = ({ userProfile, onStoreClick }: { userProfile: any, onStoreClick?: () => void }) => {
+
   return (
     <div className="w-80 pt-8 px-4 pb-8 sticky top-0 h-screen overflow-y-auto">
       {/* Stats Header */}
       <div className="grid grid-cols-3 gap-2 mb-8 px-1">
         <div className="flex items-center gap-1.5 justify-center">
-          <img src={streak} alt="Streak" className="w-6 h-6 flex-shrink-0 object-contain" />
-          <span className="font-bold text-base text-duo-orange">6</span>
+          <img src={streak} alt="Streak" className="w-6 h-6 shrink-0 object-contain" />
+          <span className="font-bold text-base text-duo-orange">
+            {userProfile?.streak ?? 0}
+          </span>
         </div>
         <div className="flex items-center gap-1.5 justify-center">
-          <img src={diamond} alt="Diamond" className="w-6 h-6 flex-shrink-0 object-contain" />
-          <span className="font-bold text-base text-duo-blue">582</span>
+          <img src={diamond} alt="Diamond" className="w-6 h-6 shrink-0 object-contain" />
+          <span className="font-bold text-base text-duo-blue">
+            {userProfile?.diamonds ?? 0}
+          </span>
         </div>
         <div className="flex items-center gap-1.5 justify-center">
           <img src={hearts} alt="Hearts" className="w-6 h-6 flex-shrink-0 object-contain" />
-          <span className="font-bold text-base text-duo-red">5</span>
+          <span className="font-bold text-base text-duo-red">
+            {userProfile?.hearts ?? 5}
+          </span>
         </div>
       </div>
 

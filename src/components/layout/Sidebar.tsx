@@ -7,6 +7,7 @@ import lily from '../../assets/Lily.png'
 
 
 export const Sidebar = ({ 
+  userProfile,
   currentView = 'learn', 
   onStoreClick,
   onLearnClick,
@@ -14,6 +15,7 @@ export const Sidebar = ({
   onPracticeClick,
   onProfileClick
 }: { 
+  userProfile: any,
   currentView?: 'learn' | 'shop' | 'letters' | 'practice' | 'profile',
   onStoreClick?: () => void,
   onLearnClick?: () => void,
@@ -26,7 +28,7 @@ export const Sidebar = ({
     { icon: letterIcon, label: 'Letters', view: 'letters' },
     { icon: exerciseIcon, label: 'Practice', view: 'practice' },
     { icon: storeIcon, label: 'Store', view: 'shop' },
-    { icon: lily, label: 'Profile', view: 'profile' },
+    { icon: userProfile?.avatar_url || lily, label: 'Profile', view: 'profile' },
   ]
 
   return (
