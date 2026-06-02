@@ -17,7 +17,17 @@ export const UsernameEditModal: FC<UsernameEditModalProps> = ({ isOpen, onClose,
     if (isOpen) {
       setUsername(currentUsername)
       setError('')
+      // Disable background scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Re-enable scroll when modal is closed
+      document.body.style.overflow = 'unset';
     }
+    
+    // Cleanup function to re-enable scroll if component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen, currentUsername])
 
   if (!isOpen) return null

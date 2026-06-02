@@ -1,13 +1,16 @@
 'use client'
 
-import { Zap } from 'lucide-react'
 import { Button } from '../ui/Button'
 import diamond from '../../assets/diamond.png'
 import hearts from '../../assets/hearts.png'
 import streak from '../../assets/streak.png'
+import { useUser } from '../../contexts'
+import { MAX_HEARTS } from '../../lib/hearts'
 import subscription from '../../assets/subscription.png'
+import { getQuestIcon } from '../../lib/getQuestIcon' // Import the centralized function
 
-export const RightSidebar = ({ userProfile, onStoreClick }: { userProfile: any, onStoreClick?: () => void }) => {
+export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQuests }: { userProfile: any, onStoreClick?: () => void, onQuestsClick?: () => void, hideQuests?: boolean }) => {
+  const { quests } = useUser()
 
   return (
     <div className="w-80 pt-8 px-4 pb-8 sticky top-0 h-screen overflow-y-auto">
@@ -26,9 +29,9 @@ export const RightSidebar = ({ userProfile, onStoreClick }: { userProfile: any, 
           </span>
         </div>
         <div className="flex items-center gap-1.5 justify-center">
-          <img src={hearts} alt="Hearts" className="w-6 h-6 flex-shrink-0 object-contain" />
+          <img src={hearts} alt="Hearts" className="w-6 h-6 shrink-0 object-contain" />
           <span className="font-bold text-base text-duo-red">
-            {userProfile?.hearts ?? 5}
+            {`${userProfile?.hearts ?? 5}/${MAX_HEARTS}`}
           </span>
         </div>
       </div>
@@ -57,26 +60,42 @@ export const RightSidebar = ({ userProfile, onStoreClick }: { userProfile: any, 
         </Button>
       </div>
 
-      {/* Daily Quests Card */}
-      <div className="bg-duo-dark border-[0.5px] border-duo-border rounded-xl p-5">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-base text-white uppercase tracking-wider">Daily Quests</h3>
-          <button className="text-[11px] font-black text-duo-green uppercase tracking-widest">VIEW ALL</button>
-        </div>
-        
-        <div className="flex items-start gap-3 mb-4">
-          <Zap className="w-7 h-7 text-duo-green fill-duo-green mt-0.5" />
-          <div className="flex-1">
-            <h4 className="font-bold text-sm text-white mb-1.5">Earn 50 XP</h4>
-            <div className="h-3 bg-duo-border rounded-full overflow-hidden">
-              <div className="h-full w-[60%] bg-duo-green rounded-full relative">
-                <div className="absolute top-0 right-0 h-full w-2 bg-white/20" />
-              </div>
-            </div>
+      {/* Daily Quests Card - Now displays all quests */}
+      {!hideQuests && quests && quests.length > 0 && (
+        <div className="bg-duo-dark border-[0.5px] border-duo-border rounded-xl p-5">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-base text-white uppercase tracking-wider">Daily Quests</h3>
+            <button 
+              onClick={onQuestsClick}
+              className="text-[11px] font-black text-duo-green uppercase tracking-widest"
+            >
+              DETAILS
+            </button>
           </div>
-          <div className="text-xl mt-2">🎁</div>
+          
+          <div className="flex flex-col gap-4">
+            {quests.map(quest => {
+              const progressPercentage = Math.min((quest.progress / quest.quests.target) * 100, 100);
+              return (
+                <div key={quest.id} className="flex items-start gap-3">
+                  <img src={getQuestIcon(quest.quests.icon)} alt={quest.quests.title} className="w-7 h-7 object-contain" />
+                  <div className="flex-1">
+                    <h4 className="font-bold text-sm text-white mb-1.5">{quest.quests.title}</h4>
+                    <div className="h-3 bg-duo-border rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-duo-green rounded-full relative transition-all duration-300"
+                        style={{ width: `${progressPercentage}%` }}
+                      >
+                        <div className="absolute top-0 right-0 h-full w-2 bg-white/20" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Footer */}
       <div className="mt-8 flex flex-col items-center gap-3 text-xs font-bold text-duo-gray uppercase tracking-wider opacity-60">

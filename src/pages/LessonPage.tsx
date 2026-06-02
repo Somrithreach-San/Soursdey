@@ -12,6 +12,9 @@ import { useSound } from '../hooks/useSound'
 import correctSound from '../assets/sounds/correct.mp3'
 import wrongSound from '../assets/sounds/wrong.mp3'
 import lessonCompleteSound from '../assets/sounds/lesson_complete.mp3'
+import Lottie from 'lottie-react'
+import plantAnimation from '../assets/plant.json'
+import { type Challenge, type Lesson, recordMistake, clearUserMistakes } from '../services'
 
 interface ChallengeOption {
   id: string
@@ -24,27 +27,6 @@ interface ChallengeOption {
   pair_id: number | null
 }
 
-interface Challenge {
-  id: string
-  lesson_id: string
-  type: 'SELECT' | 'ASSIST' | 'SELECT_IMAGE' | 'LISTEN_AND_SELECT' | 'MATCHING'
-  instruction: string | null
-  question: string
-  phonetic: string | null
-  order: number
-  audio_src?: string | null
-  correct_answer?: string | null
-  options: ChallengeOption[]
-}
-
-interface Lesson {
-  id: string
-  title: string
-  unit_id: string
-  order: number
-  challenges: Challenge[]
-}
-
 const SpeechBubble = ({ text, phonetic }: { text: string; phonetic: string | null }) => (
   <div className="relative border-2 border-duo-border rounded-2xl p-4 bg-duo-dark max-w-md shadow-sm">
     {phonetic && (
@@ -55,8 +37,22 @@ const SpeechBubble = ({ text, phonetic }: { text: string; phonetic: string | nul
   </div>
 )
 
-export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string, onExit: () => void, onComplete: (result: { perfect: boolean; accuracy: number; duration: number }) => void }) => {
-  const [lesson, setLesson] = useState<Lesson | null>(null)
+const LottiePlayer = (Lottie as unknown as { default: typeof Lottie }).default || Lottie;
+
+interface LessonPageProps {
+  lessonId?: string
+  lessonData?: { lesson: Lesson; challenges: Challenge[] }
+  onExit: () => void
+  onComplete: (result: { perfect: boolean; accuracy: number; duration: number; lessonType?: 'review' | 'mistakes' }) => void
+}
+
+export const LessonPage = ({ 
+  lessonId, 
+  lessonData,
+  onExit, 
+  onComplete 
+}: LessonPageProps) => {
+  const [lesson, setLesson] = useState<Lesson & { challenges: Challenge[] } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedOption, setSelectedOption] = useState<string | null>(null)
   const [status, setStatus] = useState<'idle' | 'correct' | 'wrong'>('idle')
@@ -72,9 +68,16 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
   const startTimeRef = useRef<number>(Date.now())
   const audioRef = useRef<HTMLAudioElement | null>(null)
   
-  const { profile, updateProfile, refreshProfile } = useUser()
+  const { profile, updateProfile, incrementUserStreak } = useUser()
   const { completeLesson } = useLesson()
   const playLessonCompleteSound = useSound(lessonCompleteSound)
+
+  // Check for hearts on mount/profile update
+  useEffect(() => {
+    if (profile && profile.hearts === 0 && !isLoading && !isGameOver) {
+      setIsGameOver(true)
+    }
+  }, [profile?.hearts, isLoading, isGameOver])
 
   const currentChallenge = lesson?.challenges?.[currentChallengeIndex]
 
@@ -140,26 +143,12 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
   }
 
   useEffect(() => {
-    const fetchLesson = async () => {
-      if (!lessonId) return
+    const initializeLesson = async () => {
       setIsLoading(true)
       try {
-        const { data: lessonData, error: lessonError } = await supabase
-          .from('lessons')
-          .select('*, challenges(id, lesson_id, type, instruction, question, phonetic, "order", audio_src, correct_answer, options:challenge_options(id, challenge_id, text, phonetic, is_correct, audio_src, image_src, pair_id))')
-          .eq('id', lessonId)
-          .order('order', { foreignTable: 'challenges', ascending: true })
-          .maybeSingle()
-
-        if (lessonError) {
-          console.error('Error fetching lesson data payload:', lessonError.message)
-          onExit()
-          return
-        }
-
-        if (lessonData && lessonData.challenges) {
-          // The query already sorts challenges by order, so client-side sort is redundant.
-          const challengesWithSanitizedOptions = lessonData.challenges.map((c: any) => ({
+        // If lessonData is provided (e.g., for review lessons), use it directly
+        if (lessonData) {
+          const challengesWithSanitizedOptions = lessonData.challenges.map((c: Challenge) => ({
             id: c.id,
             lesson_id: c.lesson_id,
             type: c.type,
@@ -169,24 +158,60 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
             order: c.order,
             audio_src: c.audio_src,
             correct_answer: c.correct_answer,
-            options: c.options
-              ? c.options.map((o: any) => ({
-                  id: o.id,
-                  challenge_id: o.challenge_id,
-                  text: o.text,
-                  phonetic: o.phonetic,
-                  is_correct: o.is_correct,
-                  audio_src: o.audio_src,
-                  image_src: o.image_src,
-                  // Ensure pair_id is null if not present to match the interface
-                  pair_id: o.pair_id ?? null,
-                }))
-              : [],
+            options: c.options,
           }));
 
-          setLesson({ ...lessonData, challenges: challengesWithSanitizedOptions } as any);
+          setLesson({ 
+            ...lessonData.lesson,
+            challenges: challengesWithSanitizedOptions 
+          } as any);
+        } else if (lessonId) {
+          // Fetch from database if only lessonId is provided
+          const { data: lessonDataDb, error: lessonError } = await supabase
+            .from('lessons')
+            .select('*, challenges(id, lesson_id, type, instruction, question, phonetic, "order", audio_src, correct_answer, options:challenge_options(id, challenge_id, text, phonetic, is_correct, audio_src, image_src, pair_id))')
+            .eq('id', lessonId)
+            .order('order', { foreignTable: 'challenges', ascending: true })
+            .maybeSingle()
+
+          if (lessonError) {
+            console.error('Error fetching lesson data payload:', lessonError.message)
+            onExit()
+            return
+          }
+
+          if (lessonDataDb && lessonDataDb.challenges) {
+            const challengesWithSanitizedOptions = lessonDataDb.challenges.map((c: any) => ({
+              id: c.id,
+              lesson_id: c.lesson_id,
+              type: c.type,
+              instruction: c.instruction,
+              question: c.question,
+              phonetic: c.phonetic,
+              order: c.order,
+              audio_src: c.audio_src,
+              correct_answer: c.correct_answer,
+              options: c.options
+                ? c.options.map((o: any) => ({
+                    id: o.id,
+                    challenge_id: o.challenge_id,
+                    text: o.text,
+                    phonetic: o.phonetic,
+                    is_correct: o.is_correct,
+                    audio_src: o.audio_src,
+                    image_src: o.image_src,
+                    pair_id: o.pair_id ?? null,
+                  }))
+                : [],
+            }));
+
+            setLesson({ ...lessonDataDb, challenges: challengesWithSanitizedOptions } as any);
+          } else {
+            console.warn('No structured lesson details found for given ID.')
+            onExit()
+          }
         } else {
-          console.warn('No structured lesson details found for given ID.')
+          console.warn('No lesson data or lessonId provided')
           onExit()
         }
       } catch (err) {
@@ -196,8 +221,8 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
         setIsLoading(false)
       }
     }
-    fetchLesson()
-  }, [lessonId, onExit])
+    initializeLesson()
+  }, [lessonId, lessonData, onExit])
 
   useEffect(() => {
     if (currentChallenge?.type === 'MATCHING') {
@@ -225,7 +250,7 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
     }
   }
 
-  const handleMatchingClick = (option: ChallengeOption) => {
+  const handleMatchingClick = async (option: ChallengeOption) => {
     if (status !== 'idle' || selectedPair.length === 2) return
     if (selectedPair.some(p => p.id === option.id)) return
 
@@ -252,10 +277,23 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
       } else {
         handlePlaySound(wrongSound)
         setWrongPair(newSelectedPair)
-        setTimeout(() => {
-          setSelectedPair([])
-          setWrongPair([])
-        }, 800)
+        setMistakes(prev => prev + 1)
+        // Record the mistake for both items in the pair
+        if (profile && lesson) {
+          await recordMistake(profile.id, first.challenge_id, lesson.id)
+          await recordMistake(profile.id, second.challenge_id, lesson.id)
+        }
+
+        if (profile && profile.hearts <= 1) {
+          await deductHeart()
+          setIsGameOver(true)
+        } else {
+          await deductHeart()
+          setTimeout(() => {
+            setSelectedPair([])
+            setWrongPair([])
+          }, 800)
+        }
       }
     }
   }
@@ -264,7 +302,6 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
     if (!profile || profile.hearts === 0) return
     const newHearts = Math.max(0, profile.hearts - 1)
     await updateProfile({ hearts: newHearts })
-    await refreshProfile()
   }
 
   const handleWordBankClick = (option: ChallengeOption) => {
@@ -300,6 +337,9 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
       setStatus('correct')
     } else {
       handlePlaySound(wrongSound)
+      // Record the mistake
+      await recordMistake(profile!.id, currentChallenge.id, lesson.id)
+      
       if (profile && profile.hearts <= 1) {
         await deductHeart()
         setIsGameOver(true)
@@ -311,14 +351,19 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
     }
   }
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     if (status !== 'idle') return
+    // Record the skip as a mistake
+    if (lesson && currentChallenge) {
+      await recordMistake(profile!.id, currentChallenge.id, lesson.id)
+    }
     setMistakes(prev => prev + 1)
     handleContinue()
   }
 
   const handleContinue = async () => {
     if (!lesson) return
+
     const isLastChallenge = currentChallengeIndex === lesson.challenges.length - 1
     if (isLastChallenge) {
       playLessonCompleteSound()
@@ -330,14 +375,27 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
       // Mark lesson as complete
       await completeLesson(lesson.id)
 
-      // Add gems: 10 for perfect/flawless, 5 for normal lessons
-      const gemsToAdd = mistakes === 0 ? 10 : 5
+      // Determine lesson type
+      let lessonType: 'review' | 'mistakes' | undefined
+      if (lesson.id.startsWith('review-lesson-')) {
+        lessonType = 'review'
+      } else if (lesson.id.startsWith('mistakes-lesson-')) {
+        lessonType = 'mistakes'
+        // Clear mistakes after completing mistakes review
+        if (profile) {
+          await clearUserMistakes(profile.id)
+        }
+      }
+
+      // Add gems: 30 for perfect/flawless, 15 for normal lessons
+      const gemsToAdd = mistakes === 0 ? 30 : 15
       if (profile) {
         await updateProfile({ diamonds: (profile.diamonds || 0) + gemsToAdd })
-        await refreshProfile()
+        // Increment streak after completing lesson
+        await incrementUserStreak({ lessonCompleted: true })
       }
       
-      onComplete({ perfect: mistakes === 0, accuracy, duration })
+      onComplete({ perfect: mistakes === 0, accuracy, duration, lessonType })
       return
     }
     setCurrentChallengeIndex(prev => prev + 1)
@@ -387,11 +445,14 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
   return (
     <>
       {isGameOver && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-duo-dark p-8 rounded-lg text-center border-2 border-duo-border">
-            <h2 className="text-2xl font-bold text-white mb-4">You're out of hearts!</h2>
-            <p className="text-duo-gray mb-6">Try again tomorrow or refill your hearts in the store.</p>
-            <Button onClick={onExit} className="w-full bg-duo-red hover:bg-red-600 text-white font-bold uppercase">
+        <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4">
+          <div className="bg-duo-dark p-8 rounded-2xl text-center border-2 border-duo-border max-w-sm w-full flex flex-col items-center gap-4">
+            <div className="w-32 h-32">
+              <LottiePlayer animationData={plantAnimation} loop={true} />
+            </div>
+            <h2 className="text-2xl font-black text-white">Mistakes help you grow!</h2>
+            <p className="text-duo-gray font-bold">You're out of hearts. Come back tomorrow or refill them in the store.</p>
+            <Button onClick={onExit} className="w-full" variant="primary" size="lg">
               Exit Lesson
             </Button>
           </div>
@@ -400,17 +461,17 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
 
       <div className="fixed inset-0 bg-duo-dark z-100 flex flex-col h-screen select-none overflow-y-auto">
         {/* Header */}
-        <header className="max-w-5xl mx-auto w-full px-4 pt-10 pb-4 flex items-center gap-4 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="max-w-5xl mx-auto w-full px-4 pt-6 md:pt-10 pb-4 flex items-center gap-3 md:gap-4 shrink-0">
+          <div className="flex items-center gap-2 md:gap-4">
             <button onClick={onExit} className="text-duo-gray hover:text-white transition-colors">
-              <X className="w-7 h-7" strokeWidth={2.5} />
+              <X className="w-6 h-6 md:w-7 md:h-7" strokeWidth={2.5} />
             </button>
-            <button className="text-duo-gray hover:text-white transition-colors">
+            <button className="text-duo-gray hover:text-white transition-colors hidden sm:block">
               <Settings className="w-6 h-6" />
             </button>
           </div>
 
-          <div className="flex-1 h-4 bg-duo-border rounded-full overflow-hidden">
+          <div className="flex-1 h-3 md:h-4 bg-duo-border rounded-full overflow-hidden">
             <div
               className="h-full bg-duo-green transition-all duration-700 relative rounded-full"
               style={{ width: `${progress}%` }}
@@ -419,16 +480,16 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <img src={hearts} alt="Hearts" className="w-7 h-7 object-contain" />
-            <span className="font-bold text-base text-duo-red">
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <img src={hearts} alt="Hearts" className="w-6 h-6 md:w-7 md:h-7 object-contain" />
+            <span className="font-bold text-sm md:text-base text-duo-red">
               {profile?.hearts ?? <InfinityIcon className="w-5 h-5" />}
             </span>
           </div>
         </header>
 
         {/* Main Content Container */}
-        <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-14 md:pt-24 pb-12 flex flex-col items-center">
+        <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-8 md:pt-24 pb-12 flex flex-col items-center">
           <div className="w-full max-w-3xl mx-auto">
             
             {/* Question Header Layout */}
@@ -489,9 +550,9 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
             {/* Interactive Options Area */}
             <div className="w-full">
               {currentChallenge.type === 'MATCHING' ? (
-                <div className="flex justify-center gap-4 w-full max-w-3xl mx-auto">
+                <div className="flex flex-col md:flex-row justify-center gap-4 w-full max-w-3xl mx-auto">
                   {/* Left Column */}
-                  <div className="flex flex-col gap-2 w-full">
+                  <div className="flex flex-col gap-2 w-full md:w-1/2">
                     {leftOptions.map((option, index) => {
                       const isSelected = selectedPair.some(p => p.id === option.id)
                       const isSolved = solvedPairs.includes(option.pair_id!)
@@ -524,7 +585,7 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
                   </div>
 
                   {/* Right Column */}
-                  <div className="flex flex-col gap-2 w-full">
+                  <div className="flex flex-col gap-2 w-full md:w-1/2">
                     {rightOptions.map((option, index) => {
                       const isSelected = selectedPair.some(p => p.id === option.id)
                       const isSolved = solvedPairs.includes(option.pair_id!)
@@ -733,25 +794,25 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
         </main>
 
         {/* Footer */}
-        <footer className="border-t-2 py-10 px-4 transition-colors duration-300 border-duo-border bg-duo-dark shrink-0">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <footer className="border-t-2 py-6 md:py-10 px-4 transition-colors duration-300 border-duo-border bg-duo-dark shrink-0">
+          <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
+            <div className="flex items-center gap-4 w-full md:w-auto">
               {status === 'idle' ? (
-                <Button variant="ghost" className="px-16 py-5" onClick={handleSkip}>
+                <Button variant="ghost" className="flex-1 md:flex-none md:px-16 py-4 md:py-5" onClick={handleSkip}>
                   Skip
                 </Button>
               ) : (
-                <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center bg-[#202f36]">
+                <div className="flex items-center gap-3 md:gap-5">
+                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center bg-[#202f36] shrink-0">
                     {status === 'correct' ? (
-                      <CheckCircle2 className="w-10 h-10 text-duo-green" fill="currentColor" stroke="#202f36" />
+                      <CheckCircle2 className="w-7 h-7 md:w-10 md:h-10 text-duo-green" fill="currentColor" stroke="#202f36" />
                     ) : (
-                      <X className="w-10 h-10 text-duo-red" strokeWidth={4} />
+                      <X className="w-7 h-7 md:w-10 md:h-10 text-duo-red" strokeWidth={4} />
                     )}
                   </div>
                   <div className="flex flex-col">
                     <h2 className={cn(
-                      "text-2xl font-black",
+                      "text-xl md:text-2xl font-black",
                       status === 'correct' ? "text-duo-green" : "text-duo-red"
                     )}>
                       {status === 'correct' ? 'Amazing!' : 'Correct solution:'}
@@ -760,11 +821,11 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
                     {status === 'wrong' && (
                       <div className="flex flex-col mb-1">
                         {options.find(o => o.is_correct)?.phonetic && (
-                          <span className="text-duo-red font-bold text-sm">
+                          <span className="text-duo-red font-bold text-xs md:text-sm">
                             {options.find(o => o.is_correct)?.phonetic}
                           </span>
                         )}
-                        <span className="text-duo-red font-black text-lg font-khmer">
+                        <span className="text-duo-red font-black text-base md:text-lg font-khmer">
                           {options.find(o => o.is_correct)?.text}
                         </span>
                       </div>
@@ -778,7 +839,7 @@ export const LessonPage = ({ lessonId, onExit, onComplete }: { lessonId: string,
               variant={status === 'correct' ? "primary" : status === 'wrong' ? "danger" : (hasSelection ? "primary" : "ghost")}
               disabled={status === 'idle' && !hasSelection}
               className={cn(
-                "px-16 py-5 min-w-50 uppercase tracking-wider font-black",
+                "w-full md:w-auto md:px-16 py-4 md:py-5 md:min-w-50 uppercase tracking-wider font-black",
                 status === 'idle' && !hasSelection && "opacity-50 grayscale"
               )}
               onClick={status === 'idle' ? handleCheck : (status === 'wrong' ? () => setStatus('idle') : handleContinue)}

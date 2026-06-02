@@ -37,6 +37,30 @@ export interface UserProgress {
   last_accessed: string
 }
 
+export interface ChallengeOption {
+  id: string
+  challenge_id: string
+  text: string
+  phonetic: string | null
+  is_correct: boolean
+  audio_src: string | null
+  image_src: string | null
+  pair_id: number | null
+}
+
+export interface Challenge {
+  id: string
+  lesson_id: string
+  type: 'SELECT' | 'ASSIST' | 'SELECT_IMAGE' | 'LISTEN_AND_SELECT' | 'MATCHING'
+  instruction: string | null
+  question: string
+  phonetic: string | null
+  order: number
+  audio_src?: string | null
+  correct_answer?: string | null
+  options: ChallengeOption[]
+}
+
 // ############# LESSON PROGRESS #############
 
 // Get all lesson progress for a user
@@ -264,4 +288,257 @@ export async function updateProgressPercentage(
     progress_percentage: Math.min(100, Math.max(0, percentage)),
     last_accessed: new Date().toISOString(),
   })
+}
+
+// ############# CHALLENGES #############
+
+// Get all challenges for a lesson with options
+export async function getChallengesByLesson(lessonId: string): Promise<Challenge[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('challenges(id, lesson_id, type, instruction, question, phonetic, "order", audio_src, correct_answer, options:challenge_options(id, challenge_id, text, phonetic, is_correct, audio_src, image_src, pair_id))')
+      .eq('id', lessonId)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') return null // No rows found
+      throw error
+    }
+
+    if (!data || !data.challenges) return null
+
+    // Sanitize and structure challenges
+    const challenges = data.challenges.map((c: any) => ({
+      id: c.id,
+      lesson_id: c.lesson_id,
+      type: c.type,
+      instruction: c.instruction,
+      question: c.question,
+      phonetic: c.phonetic,
+      order: c.order,
+      audio_src: c.audio_src,
+      correct_answer: c.correct_answer,
+      options: c.options
+        ? c.options.map((o: any) => ({
+            id: o.id,
+            challenge_id: o.challenge_id,
+            text: o.text,
+            phonetic: o.phonetic,
+            is_correct: o.is_correct,
+            audio_src: o.audio_src,
+            image_src: o.image_src,
+            pair_id: o.pair_id ?? null,
+          }))
+        : [],
+    }))
+
+    return challenges
+  } catch (error) {
+    console.error('Error fetching challenges for lesson:', error)
+    return null
+  }
+}
+
+// Get all completed lessons for a user with their challenges
+export async function getCompletedLessonsWithChallenges(
+  userId: string
+): Promise<Array<{ lesson: Lesson; challenges: Challenge[] }> | null> {
+  try {
+    // First get all completed lessons
+    const { data: completedLessons, error: progressError } = await supabase
+      .from('lesson_progress')
+      .select('lesson_id')
+      .eq('user_id', userId)
+      .eq('completed', true)
+
+    if (progressError) throw progressError
+
+    if (!completedLessons || completedLessons.length === 0) {
+      return []
+    }
+
+    const lessonIds = completedLessons.map(p => p.lesson_id)
+
+    // Fetch all lessons with their challenges
+    const { data: lessonsData, error: lessonsError } = await supabase
+      .from('lessons')
+      .select('*, challenges(id, lesson_id, type, instruction, question, phonetic, "order", audio_src, correct_answer, options:challenge_options(id, challenge_id, text, phonetic, is_correct, audio_src, image_src, pair_id))')
+      .in('id', lessonIds)
+      .order('order', { ascending: true })
+
+    if (lessonsError) throw lessonsError
+
+    if (!lessonsData) return []
+
+    // Sanitize and structure the data
+    const result = lessonsData.map(lesson => ({
+      lesson: {
+        id: lesson.id,
+        unit_id: lesson.unit_id,
+        title: lesson.title,
+        order: lesson.order,
+        audio_src: lesson.audio_src,
+        created_at: lesson.created_at,
+        completed: true,
+      },
+      challenges: (lesson.challenges || []).map((c: any) => ({
+        id: c.id,
+        lesson_id: c.lesson_id,
+        type: c.type,
+        instruction: c.instruction,
+        question: c.question,
+        phonetic: c.phonetic,
+        order: c.order,
+        audio_src: c.audio_src,
+        correct_answer: c.correct_answer,
+        options: c.options
+          ? c.options.map((o: any) => ({
+              id: o.id,
+              challenge_id: o.challenge_id,
+              text: o.text,
+              phonetic: o.phonetic,
+              is_correct: o.is_correct,
+              audio_src: o.audio_src,
+              image_src: o.image_src,
+              pair_id: o.pair_id ?? null,
+            }))
+          : [],
+      })),
+    }))
+
+    return result
+  } catch (error) {
+    console.error('Error fetching completed lessons with challenges:', error)
+    return null
+  }
+}
+
+// ############# MISTAKES #############
+
+export interface UserMistake {
+  id: string
+  user_id: string
+  challenge_id: string
+  lesson_id: string
+  created_at: string
+}
+
+// Record a user mistake
+export async function recordMistake(
+  userId: string,
+  challengeId: string,
+  lessonId: string
+): Promise<UserMistake | null> {
+  try {
+    const { data, error } = await supabase
+      .from('user_mistakes')
+      .insert([
+        {
+          user_id: userId,
+          challenge_id: challengeId,
+          lesson_id: lessonId,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error recording mistake:', error)
+    return null
+  }
+}
+
+// Get all unique mistakes for a user (grouped by challenge)
+export async function getUserMistakes(userId: string): Promise<Array<{ challenge: Challenge; lessonId: string; mistakeCount: number }> | null> {
+  try {
+    const { data: mistakesData, error: mistakesError } = await supabase
+      .from('user_mistakes')
+      .select('challenge_id, lesson_id')
+      .eq('user_id', userId)
+
+    if (mistakesError) throw mistakesError
+
+    if (!mistakesData || mistakesData.length === 0) {
+      return []
+    }
+
+    // Group mistakes by challenge_id and count them
+    const mistakeMap = new Map<string, { count: number; lessonId: string }>()
+    mistakesData.forEach(mistake => {
+      const key = mistake.challenge_id
+      if (mistakeMap.has(key)) {
+        const current = mistakeMap.get(key)!
+        current.count += 1
+      } else {
+        mistakeMap.set(key, { count: 1, lessonId: mistake.lesson_id })
+      }
+    })
+
+    // Fetch all unique challenges with their details
+    const challengeIds = Array.from(mistakeMap.keys())
+    const { data: challengesData, error: challengesError } = await supabase
+      .from('challenges')
+      .select('id, lesson_id, type, instruction, question, phonetic, "order", audio_src, correct_answer, options:challenge_options(id, challenge_id, text, phonetic, is_correct, audio_src, image_src, pair_id)')
+      .in('id', challengeIds)
+
+    if (challengesError) throw challengesError
+
+    if (!challengesData) return []
+
+    // Combine challenge data with mistake counts
+    const result = challengesData.map((c: any) => {
+      const mistakeInfo = mistakeMap.get(c.id)!
+      return {
+        challenge: {
+          id: c.id,
+          lesson_id: c.lesson_id,
+          type: c.type,
+          instruction: c.instruction,
+          question: c.question,
+          phonetic: c.phonetic,
+          order: c.order,
+          audio_src: c.audio_src,
+          correct_answer: c.correct_answer,
+          options: c.options
+            ? c.options.map((o: any) => ({
+                id: o.id,
+                challenge_id: o.challenge_id,
+                text: o.text,
+                phonetic: o.phonetic,
+                is_correct: o.is_correct,
+                audio_src: o.audio_src,
+                image_src: o.image_src,
+                pair_id: o.pair_id ?? null,
+              }))
+            : [],
+        } as Challenge,
+        lessonId: mistakeInfo.lessonId,
+        mistakeCount: mistakeInfo.count,
+      }
+    })
+
+    return result
+  } catch (error) {
+    console.error('Error fetching user mistakes:', error)
+    return null
+  }
+}
+
+// Clear all mistakes for a user
+export async function clearUserMistakes(userId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('user_mistakes')
+      .delete()
+      .eq('user_id', userId)
+
+    if (error) throw error
+    return true
+  } catch (error) {
+    console.error('Error clearing user mistakes:', error)
+    return false
+  }
 }

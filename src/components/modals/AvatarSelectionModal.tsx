@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { useEffect } from 'react'
 import { cn } from '../../lib/utils'
 
 import lily from '../../assets/Lily.png'
@@ -16,6 +17,21 @@ const avatars = [
 ]
 
 export const AvatarSelectionModal = ({ isOpen, onClose, onSelect, currentAvatar }: { isOpen: boolean, onClose: () => void, onSelect: (avatar: string) => void, currentAvatar: string }) => {
+  useEffect(() => {
+    if (isOpen) {
+      // Disable background scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Re-enable scroll when modal is closed
+      document.body.style.overflow = 'unset';
+    }
+    
+    // Cleanup function to re-enable scroll if component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null
 
   return (
@@ -26,7 +42,7 @@ export const AvatarSelectionModal = ({ isOpen, onClose, onSelect, currentAvatar 
           {avatars.map(avatar => (
             <button 
               key={avatar.name}
-              onClick={() => onSelect(avatar.src)}
+              onClick={() => onSelect(`${avatar.name}.png`)}
               className={cn(
                 "p-2 rounded-xl border-2 transition-all",
                 currentAvatar === avatar.src ? "border-duo-green bg-duo-green/20" : "border-transparent hover:bg-white/10"

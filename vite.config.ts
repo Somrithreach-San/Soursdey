@@ -8,4 +8,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  //ngrok exposing tunnel
+  server: {
+    allowedHosts: ['ab77-58-97-226-82.ngrok-free.app']
+  }
 })

@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, X, Loader2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { motion } from 'framer-motion'
 import { useStore } from '../contexts'
@@ -7,7 +7,6 @@ import { UserContext } from '../contexts/UserContext'
 import hearts from '../assets/hearts.png'
 import diamond from '../assets/diamond.png'
 import ice from '../assets/ice.png'
-import xp_booster from '../assets/xp_booster.png'
 
 interface FeatureListProps {
   features: { label: string; included: boolean }[]
@@ -37,32 +36,47 @@ const FeatureList = ({ features, isSelected }: FeatureListProps) => (
 )
 
 const StoreItem = ({ icon, title, description, cost, costIcon, children }: { icon: string, title: string, description: string, cost: string, costIcon?: string, children?: React.ReactNode }) => (
-  <div className="flex items-center gap-4 p-4 bg-duo-dark border-2 border-duo-border rounded-2xl hover:bg-white/5 transition-all shadow-[0_4px_0_0_#37464f] active:translate-y-0.5 active:shadow-none">
-    <div className="w-16 h-16 flex items-center justify-center">
-      <img src={icon} alt={title} className="w-12 h-12 object-contain" />
+  <div className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-duo-dark border-2 border-duo-border rounded-2xl hover:bg-white/5 transition-all shadow-[0_4px_0_0_#37464f] active:translate-y-0.5 active:shadow-none">
+    <div className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center shrink-0">
+      <img src={icon} alt={title} className="w-10 h-10 md:w-12 md:h-12 object-contain" />
     </div>
-    <div className="flex-1">
-      <h3 className="font-bold text-white text-lg">{title}</h3>
-      <p className="text-duo-gray text-sm font-bold">{description}</p>
+    <div className="flex-1 min-w-0">
+      <h3 className="font-bold text-white text-base md:text-lg truncate">{title}</h3>
+      <p className="text-duo-gray text-xs md:text-sm font-bold leading-tight">{description}</p>
     </div>
-    <div className="flex items-center gap-2">
-      <span className="font-black text-duo-blue uppercase tracking-widest text-sm">{cost}</span>
-      {costIcon && <img src={costIcon} alt="cost" className="w-4 h-4 object-contain" />}
+    <div className="flex flex-col items-end gap-2 shrink-0 ml-2">
+      <div className="flex items-center gap-1.5">
+        <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">{cost}</span>
+        {costIcon && <img src={costIcon} alt="cost" className="w-3.5 h-3.5 md:w-4 md:h-4 object-contain" />}
+      </div>
+      {children}
     </div>
-    {children}
   </div>
 )
 
 export const StorePage = () => {
-  const { storeItems, fetchStoreItems } = useStore()
-  const { profile, removeUserDiamonds, addUserHearts, refreshProfile } = useContext(UserContext)!
+  const { storeItems, fetchStoreItems, buyItem } = useStore()
+  const { profile, removeUserDiamonds, addUserHearts, refreshProfile, addStreakFreezer } = useContext(UserContext)!
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'pro' | 'family'>('pro')
+  const [isPurchasing, setIsPurchasing] = useState<string | null>(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [purchaseCost, setPurchaseCost] = useState(0)
   const [successDetails, setSuccessDetails] = useState({ title: '', message: '', newHearts: 0, newDiamonds: 0 })
 
   useEffect(() => {
     fetchStoreItems()
   }, [])
+
+  useEffect(() => {
+    if (showSuccessModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showSuccessModal]);
 
   const freeFeatures = [
     { label: 'Learning content', included: true },
@@ -92,24 +106,27 @@ export const StorePage = () => {
   ]
 
   // Handle purchases
-  const purchaseHeartRefill = async (cost: number, heartsToAdd: number) => {
-    if (!profile || (profile.diamonds || 0) < cost) {
+  const purchaseHeartRefill = async (item: any, heartsToAdd: number, isRefill: boolean) => {
+    if (!profile || (profile.diamonds || 0) < item.cost) {
       alert('Not enough gems!')
       return
     }
     // Can't have more than 5 hearts
     const currentHearts = profile.hearts || 0
-    if (currentHearts >= 5) {
+    if (currentHearts >= 5 && isRefill) {
       alert('You already have full hearts!')
       return
     }
+
+    setIsPurchasing(item.id)
     try {
-      await removeUserDiamonds(cost)
-      const heartsToActuallyAdd = Math.min(heartsToAdd, 5 - currentHearts)
+      await removeUserDiamonds(item.cost)
+      const heartsToActuallyAdd = isRefill ? Math.min(heartsToAdd, 5 - currentHearts) : heartsToAdd;
       await addUserHearts(heartsToActuallyAdd)
       await refreshProfile()
       const newHeartCount = currentHearts + heartsToActuallyAdd
-      const newDiamondCount = (profile?.diamonds || 0) - cost
+      const newDiamondCount = (profile?.diamonds || 0) - item.cost
+      setPurchaseCost(item.cost)
       setSuccessDetails({
         title: 'Purchase Successful!',
         message: `You added ${heartsToActuallyAdd} heart${heartsToActuallyAdd > 1 ? 's' : ''}!`,
@@ -120,6 +137,42 @@ export const StorePage = () => {
     } catch (err) {
       console.error('Purchase failed:', err)
       alert('Purchase failed, please try again.')
+    } finally {
+      setIsPurchasing(null)
+    }
+  }
+
+  // Handle streak freezer purchase
+  const purchaseStreakFreezer = async (item: any) => {
+    if (!profile || (profile.diamonds || 0) < item.cost) {
+      alert('Not enough gems!')
+      return
+    }
+    setIsPurchasing(item.id)
+    try {
+      // Remove diamonds from user's balance
+      await removeUserDiamonds(item.cost)
+      // Add streak freezer to user's profile
+      await addStreakFreezer(1)
+      // Also add to inventory using store system
+      await buyItem(item.id)
+      await refreshProfile()
+      
+      const newDiamondCount = (profile?.diamonds || 0) - item.cost
+      const currentFreezers = profile?.streak_freezer_uses || 0
+      setPurchaseCost(item.cost)
+      setSuccessDetails({
+        title: 'Purchase Successful!',
+        message: `You added 1 Streak Freezer! You now have ${currentFreezers + 1} streak freezer(s).`,
+        newHearts: profile?.hearts || 0,
+        newDiamonds: newDiamondCount
+      })
+      setShowSuccessModal(true)
+    } catch (err) {
+      console.error('Streak freezer purchase failed:', err)
+      alert('Purchase failed, please try again.')
+    } finally {
+      setIsPurchasing(null)
     }
   }
 
@@ -256,11 +309,19 @@ export const StorePage = () => {
                   costIcon={diamond}
                 >
                   <button
-                        onClick={() => purchaseHeartRefill(item.cost, item.title.includes('5') ? 5 : item.title.includes('3') ? 3 : 1)}
-                        disabled={(profile?.diamonds || 0) < item.cost || (profile?.hearts || 0) >= 5}
-                        className="flex items-center gap-2 px-4 py-2 bg-transparent border-2 border-duo-border rounded-xl hover:bg-white/5 transition-all shadow-[0_2px_0_0_#37464f] active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => {
+                          const isRefill = item.title.toLowerCase().includes('refill');
+                          const heartsToAdd = isRefill ? 5 : 1;
+                          purchaseHeartRefill(item, heartsToAdd, isRefill);
+                        }}
+                        disabled={isPurchasing !== null || (profile?.diamonds || 0) < item.cost || ((profile?.hearts || 0) >= 5 && item.title.toLowerCase().includes('refill'))}
+                        className="flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 border-duo-border rounded-xl hover:bg-white/5 transition-all shadow-[0_2px_0_0_#37464f] active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <span className="font-black text-duo-blue uppercase tracking-widest text-sm">BUY</span>
+                        {isPurchasing === item.id ? (
+                          <Loader2 className="w-4 h-4 md:w-5 md:h-5 text-white animate-spin" />
+                        ) : (
+                          <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">BUY</span>
+                        )}
                       </button>
                 </StoreItem>
               ))}
@@ -271,32 +332,30 @@ export const StorePage = () => {
         {/* Power-ups Section */}
         {powerUpItems.length > 0 && (
           <section className="mb-10">
-            <h3 className="font-black text-white uppercase tracking-wider mb-4 opacity-60">Power-ups</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-black text-white uppercase tracking-wider opacity-60">Streak Freezer</h3>
+              <span className="text-white/70 text-sm">You have: {profile?.streak_freezer_uses || 0}</span>
+            </div>
             <div className="space-y-3">
               {powerUpItems.map(item => (
                     <StoreItem 
                       key={item.id}
-                      icon={item.icon_url || (item.title.includes('XP') ? xp_booster : ice)} 
+                      icon={item.icon_url || ice} 
                       title={item.title} 
                       description={item.description} 
                       cost={item.cost.toString()} 
                       costIcon={diamond}
                     >
                       <button
-                        onClick={() => {
-                          const newDiamondCount = (profile?.diamonds || 0) - item.cost
-                          setSuccessDetails({
-                            title: 'Purchase Successful!',
-                            message: `You unlocked ${item.title}!`,
-                            newHearts: profile?.hearts || 0,
-                            newDiamonds: newDiamondCount
-                          })
-                          setShowSuccessModal(true)
-                        }}
-                        disabled={(profile?.diamonds || 0) < item.cost}
-                        className="flex items-center gap-2 px-4 py-2 bg-transparent border-2 border-duo-border rounded-xl hover:bg-white/5 transition-all shadow-[0_2px_0_0_#37464f] active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => purchaseStreakFreezer(item)}
+                        disabled={isPurchasing !== null || (profile?.diamonds || 0) < item.cost}
+                        className="flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 border-duo-border rounded-xl hover:bg-white/5 transition-all shadow-[0_2px_0_0_#37464f] active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <span className="font-black text-duo-blue uppercase tracking-widest text-sm">BUY</span>
+                        {isPurchasing === item.id ? (
+                          <Loader2 className="w-4 h-4 md:w-5 md:h-5 text-white animate-spin" />
+                        ) : (
+                          <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">BUY</span>
+                        )}
                       </button>
                     </StoreItem>
                   ))}
@@ -334,16 +393,16 @@ export const StorePage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <img src={diamond} alt="Diamonds" className="w-5 h-5 object-contain" />
-                  <span className="text-duo-blue font-black text-xl">{successDetails.newDiamonds}</span>
+                  <span className="text-duo-red font-black text-xl">-{purchaseCost}</span>
                 </div>
               </div>
               
               {/* Close Button */}
               <button
                 onClick={() => setShowSuccessModal(false)}
-                className="w-full py-4 bg-duo-blue border-2 border-duo-blue rounded-2xl font-black text-white uppercase tracking-widest text-sm shadow-[0_4px_0_0_#2563eb] active:translate-y-1 active:shadow-none transition-all"
+                className="w-full py-4 bg-duo-green border-2 border-duo-green rounded-2xl font-black text-white uppercase tracking-widest text-sm shadow-brutal-green active:translate-y-1 active:shadow-none transition-all"
               >
-                Continue Shopping
+                Close
               </button>
             </div>
           </div>

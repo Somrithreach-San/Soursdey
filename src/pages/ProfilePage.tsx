@@ -1,12 +1,35 @@
 import { useState, type FC } from 'react'
-import { Clock, Pencil, AlertTriangle, Dumbbell, ChevronLeft, ChevronRight, LogOut } from 'lucide-react'
+import { Clock, Pencil, AlertTriangle, ChevronLeft, ChevronRight, LogOut } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import streakAsset from '../assets/streak.png'
+import streakOutlineAsset from '../assets/streak_outline.png'
 import { AvatarSelectionModal } from '../components/modals/AvatarSelectionModal'
 import { UsernameEditModal } from '../components/modals/UsernameEditModal'
 import { Loader } from '../components/ui/Loader'
 import type { User } from '@supabase/supabase-js'
+
+// Import all possible avatars
+import jason from '../assets/Jason.png'
+import lily from '../assets/Lily.png'
+import linda from '../assets/Linda.png'
+import mark from '../assets/Mark.png'
+import marry from '../assets/Marry.png'
+
+// A helper function to map avatar filenames to imported images
+const getAvatar = (avatarUrl: string) => {
+  switch (avatarUrl) {
+    case 'Jason.png': return jason;
+    case 'Lily.png': return lily;
+    case 'Linda.png': return linda;
+    case 'Mark.png': return mark;
+    case 'Marry.png': return marry;
+    default:
+      // If the avatarUrl is not one of the predefined ones, it might be a full URL.
+      // If it's a valid-looking string, use it, otherwise use a default.
+      return avatarUrl || lily;
+  }
+};
 
 const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'completed' | 'warning' | 'inactive' | 'future' | 'empty', isCurrent?: boolean }) => {
   if (status === 'empty') return <div className="w-11 h-11" />
@@ -22,7 +45,7 @@ const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'comple
         isCurrent && "border-white ring-2 ring-white/10"
       )}>
         {status === 'completed' ? (
-          day && day % 3 === 0 ? <span className="font-black text-sm">{day}</span> : <Dumbbell className="w-5 h-5" />
+          <img src={streakOutlineAsset} alt="Streak" className="w-5 h-5" />
         ) : status === 'warning' ? (
           <AlertTriangle className="w-5 h-5" />
         ) : (
@@ -33,7 +56,7 @@ const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'comple
   )
 }
 
-const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext }: { month: string, year: number, days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future' }[], startDay: number, onPrev: () => void, onNext: () => void }) => {
+const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext, currentMonthIndex }: { month: string, year: number, days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future', isCurrent: boolean }[], startDay: number, onPrev: () => void, onNext: () => void, currentMonthIndex: number }) => {
   const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
   const emptyDays = Array(startDay).fill(null)
 
@@ -42,7 +65,13 @@ const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext }: { month:
       <div className="bg-white/5 py-5 px-6 border-b-2 border-white/5 flex items-center justify-between">
         <button 
           onClick={onPrev}
-          className="w-10 h-10 bg-[#1a232e] border-2 border-white/10 rounded-xl flex items-center justify-center text-white shadow-[0_3px_0_0_rgba(255,255,255,0.05)] hover:bg-[#252f3d] active:translate-y-0.5 active:shadow-none transition-all"
+          disabled={currentMonthIndex === 0}
+          className={cn(
+            "w-10 h-10 border-2 rounded-xl flex items-center justify-center transition-all shadow-[0_3px_0_0_rgba(255,255,255,0.05)]",
+            currentMonthIndex === 0 
+              ? "bg-[#1a232e]/50 border-white/5 text-white/30 cursor-not-allowed shadow-none" 
+              : "bg-[#1a232e] border-white/10 text-white hover:bg-[#252f3d] active:translate-y-0.5 active:shadow-none"
+          )}
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -51,7 +80,13 @@ const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext }: { month:
 
         <button 
           onClick={onNext}
-          className="w-10 h-10 bg-[#1a232e] border-2 border-white/10 rounded-xl flex items-center justify-center text-white shadow-[0_3px_0_0_rgba(255,255,255,0.05)] hover:bg-[#252f3d] active:translate-y-0.5 active:shadow-none transition-all"
+          disabled={currentMonthIndex === 2}
+          className={cn(
+            "w-10 h-10 border-2 rounded-xl flex items-center justify-center transition-all shadow-[0_3px_0_0_rgba(255,255,255,0.05)]",
+            currentMonthIndex === 2 
+              ? "bg-[#1a232e]/50 border-white/5 text-white/30 cursor-not-allowed shadow-none" 
+              : "bg-[#1a232e] border-white/10 text-white hover:bg-[#252f3d] active:translate-y-0.5 active:shadow-none"
+          )}
         >
           <ChevronRight className="w-6 h-6" />
         </button>
@@ -67,7 +102,7 @@ const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext }: { month:
               key={i} 
               day={d.day} 
               status={d.status} 
-              isCurrent={month === 'May' && d.day === 28}
+              isCurrent={d.isCurrent}
             />
           ))}
         </div>
@@ -84,8 +119,8 @@ interface ProfilePageProps {
   onUpdateAvatar: (newAvatar: string) => Promise<boolean>;
 }
 
-export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, userProgress, onUpdateUsername, onUpdateAvatar }) => {
-  const [currentMonthIndex, setCurrentMonthIndex] = useState(new Date().getMonth() - 4) // Start with May
+export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateUsername, onUpdateAvatar }) => {
+  const [currentMonthIndex, setCurrentMonthIndex] = useState(1) // 0 = previous month, 1 = current month, 2 = next month
   const [logoutLoading, setLogoutLoading] = useState(false)
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
   const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false)
@@ -100,7 +135,6 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, userProgr
       window.location.reload()
     } catch (error) {
       console.error('Logout failed:', error)
-    } finally {
       setLogoutLoading(false)
     }
   }
@@ -109,7 +143,6 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, userProgr
     const success = await onUpdateUsername(newUsername)
     if (success) {
       setIsUsernameModalOpen(false)
-      console.log('Username updated successfully!')
     } else {
       console.error('Failed to update username.')
       // The modal will show an error message to the user
@@ -121,36 +154,53 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, userProgr
     const success = await onUpdateAvatar(newAvatar)
     if (success) {
       setIsAvatarModalOpen(false)
-      console.log('Avatar updated successfully!')
     } else {
       console.error('Failed to update avatar.')
       // Optionally show an error message to the user
     }
   }
 
-  const months = [
-    { name: 'May', year: 2026, startDay: 5, daysCount: 31 },
-    { name: 'June', year: 2026, startDay: 1, daysCount: 30 },
-    { name: 'July', year: 2026, startDay: 3, daysCount: 31 },
-  ]
+  // Generate only previous, current, and next month for navigation
+  interface CalendarMonth {
+    name: string;
+    monthIndex: number;
+    year: number;
+    daysInMonth: number;
+    startDay: number;
+  }
+  const months: CalendarMonth[] = []
+  const now = new Date()
+  for (let i = -1; i <= 1; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1)
+    months.push({
+      name: date.toLocaleString('default', { month: 'long' }),
+      monthIndex: date.getMonth(),
+      year: date.getFullYear(),
+      daysInMonth: new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(),
+      startDay: new Date(date.getFullYear(), date.getMonth(), 1).getDay(),
+    })
+  }
 
   const getDaysForMonth = (index: number) => {
-    const days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future' }[] = []
+    const days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future', isCurrent: boolean }[] = []
     const month = months[index]
     const today = new Date()
+    today.setHours(0, 0, 0, 0)
     
-    for (let i = 1; i <= month.daysCount; i++) {
-      const currentDate = new Date(month.year, index + 4, i) // Adjust month index
+    for (let i = 1; i <= month.daysInMonth; i++) {
+      const currentDate = new Date(month.year, month.monthIndex, i)
+      currentDate.setHours(0, 0, 0, 0)
       
       let status: 'completed' | 'warning' | 'inactive' | 'future'
       
       if (currentDate > today) {
         status = 'future'
       } else {
-        const dayCompleted = userProgress?.some(p => {
-          const progressDate = new Date(p.last_accessed)
-          return progressDate.toDateString() === currentDate.toDateString()
-        })
+        const year = currentDate.getFullYear()
+        const monthStr = String(currentDate.getMonth() + 1).padStart(2, '0')
+        const dayStr = String(currentDate.getDate()).padStart(2, '0')
+        const dateStr = `${year}-${monthStr}-${dayStr}`
+        const dayCompleted = userProfile?.streak_dates?.includes(dateStr)
 
         if (dayCompleted) {
           status = 'completed'
@@ -159,7 +209,11 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, userProgr
         }
       }
       
-      days.push({ day: i, status })
+      const isCurrent = month.year === today.getFullYear() && 
+                        month.monthIndex === today.getMonth() && 
+                        i === today.getDate()
+      
+      days.push({ day: i, status, isCurrent })
     }
     return days
   }
@@ -197,7 +251,7 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, userProgr
           <div className="relative">
             <div className="w-32 h-32 rounded-3xl bg-[#1a232e] border-2 border-white/10 flex items-center justify-center overflow-hidden shadow-[0_8px_0_0_rgba(0,0,0,0.2)]">
               {userProfile ? (
-                <img src={userProfile.avatar_url} alt="Profile" className="w-24 h-24 object-contain" />
+                <img src={getAvatar(userProfile.avatar_url)} alt="Profile" className="w-24 h-24 object-contain" />
               ) : (
                 <div className="w-24 h-24 flex items-center justify-center">
                   <Loader className="w-12 h-12" />
@@ -227,6 +281,7 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, userProgr
           startDay={currentMonth.startDay}
           onPrev={() => setCurrentMonthIndex(prev => Math.max(0, prev - 1))}
           onNext={() => setCurrentMonthIndex(prev => Math.min(months.length - 1, prev + 1))}
+          currentMonthIndex={currentMonthIndex}
         />
         
         {/* Logout Button */}

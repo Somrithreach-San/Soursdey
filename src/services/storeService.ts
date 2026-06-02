@@ -34,25 +34,6 @@ export async function getAllStoreItems(): Promise<StoreItem[] | null> {
   }
 }
 
-// Get store items by type
-export async function getStoreItemsByType(
-  type: 'heart' | 'diamond' | 'power-up'
-): Promise<StoreItem[] | null> {
-  try {
-    const { data, error } = await supabase
-      .from('store_items')
-      .select('*')
-      .eq('type', type)
-      .order('cost', { ascending: true })
-
-    if (error) throw error
-    return data
-  } catch (error) {
-    console.error('Error fetching store items by type:', error)
-    return null
-  }
-}
-
 // Get user inventory
 export async function getUserInventory(userId: string): Promise<UserInventory[] | null> {
   try {
@@ -137,28 +118,6 @@ export async function purchaseStoreItem(
     }
   } catch (error) {
     console.error('Error purchasing store item:', error)
-    return null
-  }
-}
-
-// Use store item (decrease quantity)
-export async function useStoreItem(userId: string, storeItemId: string): Promise<number | null> {
-  try {
-    const current = await getUserInventoryQuantity(userId, storeItemId)
-    if (current === null || current === 0) return 0
-
-    const { data, error } = await supabase
-      .from('user_inventory')
-      .update({ quantity: current - 1 })
-      .eq('user_id', userId)
-      .eq('store_item_id', storeItemId)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data?.quantity
-  } catch (error) {
-    console.error('Error using store item:', error)
     return null
   }
 }

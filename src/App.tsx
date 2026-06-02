@@ -10,31 +10,84 @@ import { PracticePage } from './pages/PracticePage'
 import { ProfilePage } from './pages/ProfilePage'
 import { LessonPage } from './pages/LessonPage'
 import LessonComplete from './pages/LessonComplete.tsx'
+import QuestsPage from './pages/QuestsPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
+import { UpdatePasswordPage } from './pages/UpdatePasswordPage'
 import { cn } from './lib/utils'
 import { useUser } from './contexts'
 import { supabase } from './lib/supabase'
 import lily from './assets/Lily.png'
 import { Loader } from './components/ui/Loader'
 import { calculateHeartsToRegenerate, MAX_HEARTS, HEART_REGENERATION_TIME } from './lib/hearts'
+import { type Challenge, type Lesson } from './services'
 
 function App() {
-  const { user, isAuthenticated, isLoading, profile, refreshProfile } = useUser()
+  const { user, isAuthenticated, isLoading, profile, quests, refreshProfile } = useUser()
   const [authView, setAuthView] = useState<'login' | 'signup'>('login')
-  const [view, setView] = useState<'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'lesson' | 'lesson-complete'>('learn')
+  const [view, setView] = useState<'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'lesson' | 'lesson-complete' | 'quests' | 'update-password'>('learn')
   const [userProgress, setUserProgress] = useState<any[]>([])
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
-  const [lessonCompleteParams, setLessonCompleteParams] = useState<{ perfect: boolean; accuracy: number; duration: number }>({ perfect: false, accuracy: 0, duration: 0 });
+  const [currentLessonData, setCurrentLessonData] = useState<{ lesson: Lesson; challenges: Challenge[] } | null>(null)
+  const [lessonCompleteParams, setLessonCompleteParams] = useState<{ perfect: boolean; accuracy: number; duration: number; lessonType?: 'review' | 'mistakes' }>({ perfect: false, accuracy: 0, duration: 0 });
+
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash.includes('type=recovery')) {
+      const params = new URLSearchParams(hash.substring(1))
+      const accessToken = params.get('access_token')
+      if (accessToken) {
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: '', // Refresh token is not available here
+        }).then(() => {
+          setView('update-password')
+        })
+      }
+    }
+  }, [])
 
   const handleStartLesson = (lessonId: string) => {
     setCurrentLessonId(lessonId)
+    setCurrentLessonData(null)
     setView('lesson')
   }
 
-  const handleLessonComplete = (result: { perfect: boolean; accuracy: number; duration: number }) => {
+  const handleStartReviewLesson = (lessonData: { lesson: Lesson; challenges: Challenge[] }) => {
+    setCurrentLessonData(lessonData)
+    setCurrentLessonId(null)
+    setView('lesson')
+  }
+
+  const handleLessonComplete = async (result: { perfect: boolean; accuracy: number; duration: number; lessonType?: 'review' | 'mistakes' }) => {
+    if (user && profile) {
+      // Find the 'Complete 1 Lesson' quest from the user's active quests
+      const lessonQuest = quests.find(q => q.quests.title === 'Complete 1 Lesson');
+
+      if (lessonQuest && !lessonQuest.is_completed) {
+        const newProgress = lessonQuest.progress + 1;
+        const isCompleted = newProgress >= lessonQuest.quests.target;
+
+        // Update the specific user_quest record in the database
+        const { error: updateQuestError } = await supabase
+          .from('user_quests')
+          .update({ 
+            progress: newProgress,
+            is_completed: isCompleted,
+          })
+          .eq('id', lessonQuest.id); // Use the ID of the user_quest record
+
+        if (updateQuestError) {
+          console.error('Error updating quest progress:', updateQuestError);
+        } else {
+          // Refresh profile and quests to get the latest data
+          await refreshProfile();
+        }
+      }
+    }
+
     setView('lesson-complete');
-    setLessonCompleteParams({ perfect: result.perfect, accuracy: result.accuracy, duration: result.duration });
+    setLessonCompleteParams({ perfect: result.perfect, accuracy: result.accuracy, duration: result.duration, lessonType: result.lessonType });
   }
 
   useEffect(() => {
@@ -50,16 +103,22 @@ function App() {
 
       if (profileError && profileError.code === 'PGRST116') {
         // Profile doesn't exist, so create it.
+        // Extract username from email by removing everything after @
         const defaultUsername = user.email?.split('@')[0] || 'new_user'
         const { error: createError } = await supabase
           .from('profiles')
           .insert({
             id: user.id,
             username: defaultUsername,
+            email: user.email,
             avatar_url: lily, // Default avatar
             streak: 0,
             diamonds: 10,
             hearts: 5,
+            created_at: new Date().toISOString(),
+            last_heart_update: new Date().toISOString(),
+            last_streak_update: null,
+            streak_dates: [],
           })
           .select('*')
           .single()
@@ -98,7 +157,6 @@ function App() {
           } else {
             // Update context profile with regenerated hearts
             await refreshProfile();
-            console.log(`Regenerated ${heartsToAdd} heart(s). New count: ${newHeartCount}`);
           }
         } else {
           // Profile is already up-to-date in context
@@ -163,8 +221,9 @@ function App() {
     }
   }
 
-  // Loading state
-  if (isLoading || (isAuthenticated && !profile)) {
+  // Only show loading if we're authenticated but still fetching profile
+  // Don't block auth pages from rendering - this prevents input data loss
+  if (isAuthenticated && (!profile || isLoading)) {
     return (
       <div className="bg-duo-dark min-h-screen text-white flex items-center justify-center">
         <div className="text-center flex flex-col items-center gap-6">
@@ -175,7 +234,11 @@ function App() {
     )
   }
 
-  // Auth pages
+  if (view === 'update-password') {
+    return <UpdatePasswordPage />
+  }
+
+  // Auth pages - always render these if not authenticated, even if initial auth check is still running
   if (!isAuthenticated) {
     return (
       <>
@@ -192,7 +255,7 @@ function App() {
   return (
     <div className={cn(
       "bg-duo-dark min-h-screen text-white selection:bg-duo-green selection:text-white",
-      view !== 'lesson' && view !== 'lesson-complete' && "pl-72"
+      view !== 'lesson' && view !== 'lesson-complete' && "lg:pl-72 pb-20 lg:pb-0"
     )}>
       {view !== 'lesson' && view !== 'lesson-complete' && (
         <Sidebar 
@@ -203,11 +266,17 @@ function App() {
           onLettersClick={() => setView('letters')}
           onPracticeClick={() => setView('practice')}
           onProfileClick={() => setView('profile')}
+          onQuestsClick={() => setView('quests')}
         />
       )}
       
       {view === 'lesson' ? (
-        <LessonPage lessonId={currentLessonId!} onExit={() => setView('learn')} onComplete={handleLessonComplete} />
+        <LessonPage 
+          lessonId={currentLessonId ?? undefined}
+          lessonData={currentLessonData ?? undefined}
+          onExit={() => setView('learn')} 
+          onComplete={handleLessonComplete} 
+        />
       ) : view === 'lesson-complete' ? (
         <LessonComplete 
           route={{ params: lessonCompleteParams }} 
@@ -227,7 +296,8 @@ function App() {
             {view === 'learn' && <LearnPage onStartLesson={handleStartLesson} />}
             {view === 'shop' && <StorePage />}
             {view === 'letters' && <LettersPage />}
-            {view === 'practice' && <PracticePage />}
+            {view === 'practice' && <PracticePage onStartLesson={handleStartReviewLesson} />}
+            {view === 'quests' && <QuestsPage />}
             {view === 'profile' && (
               <ProfilePage 
                 user={user}
@@ -239,9 +309,14 @@ function App() {
             )}
           </main>
 
-          {(view === 'learn' || view === 'letters' || view === 'practice' || view === 'profile') && (
+          {(view === 'learn' || view === 'letters' || view === 'practice' || view === 'profile' || view === 'quests') && (
             <div className="w-80 hidden xl:block">
-              <RightSidebar userProfile={profile} onStoreClick={() => setView('shop')} />
+              <RightSidebar 
+                userProfile={profile} 
+                onStoreClick={() => setView('shop')}
+                onQuestsClick={() => setView('quests')}
+                hideQuests={view === 'quests'}
+              />
             </div>
           )}
         </div>

@@ -1,6 +1,8 @@
 import { Button } from '../components/ui/Button'
-import { Zap, Target, Clock } from 'lucide-react'
+import { Target, Clock } from 'lucide-react'
 import Lottie from "lottie-react";
+import { motion, animate } from 'framer-motion';
+import { useEffect, useState } from 'react';
 
 // Fix for Lottie default import issues in some environments
 const LottiePlayer = (Lottie as unknown as { default: typeof Lottie }).default || Lottie;
@@ -8,6 +10,7 @@ const LottiePlayer = (Lottie as unknown as { default: typeof Lottie }).default |
 // Import animations
 import goodLessonAnimation from '../assets/good_lesson.json'
 import perfectLessonAnimation from '../assets/perfect_lesson.json'
+import otterAnimation from '../assets/otter.json'
 import diamond from '../assets/diamond.png'
 
 type ViewType = "learn" | "shop" | "letters" | "practice" | "profile" | "lesson" | "lesson-complete";
@@ -18,6 +21,7 @@ interface LessonCompleteProps {
       perfect: boolean;
       accuracy: number;
       duration: number;
+      lessonType?: 'review' | 'mistakes'
     };
   };
   navigation: {
@@ -27,10 +31,32 @@ interface LessonCompleteProps {
 }
 
 const LessonComplete = ({ route, navigation }: LessonCompleteProps) => {
-  const { perfect, accuracy, duration } = route.params;
+  const { perfect, accuracy, duration, lessonType } = route.params;
+  const [gems, setGems] = useState(0);
 
-  // Select animation based on performance
-  const animationData = perfect ? perfectLessonAnimation : goodLessonAnimation;
+  useEffect(() => {
+    const targetGems = perfect ? 30 : 15;
+    const controls = animate(0, targetGems, {
+      duration: 1,
+      onUpdate: (value: number) => setGems(Math.round(value)),
+    });
+    return () => controls.stop();
+  }, [perfect]);
+
+  // Select animation and messages based on lesson type
+  let animationData: any = perfect ? perfectLessonAnimation : goodLessonAnimation;
+  let title = perfect ? 'Flawless Lesson!' : 'Lesson Complete!';
+  let subtitle = '';
+
+  if (lessonType === 'review') {
+    animationData = otterAnimation;
+    title = 'Great Practice Session!';
+    subtitle = 'You\'re improving every day!';
+  } else if (lessonType === 'mistakes') {
+    animationData = otterAnimation;
+    title = 'Mistakes Cleared!';
+    subtitle = 'You\'ve mastered those challenges!';
+  }
 
   const formatDuration = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60);
@@ -47,23 +73,18 @@ const LessonComplete = ({ route, navigation }: LessonCompleteProps) => {
       </div>
 
       <h1 className="text-3xl font-black text-white my-6">
-        {perfect ? 'Flawless Lesson!' : 'Lesson Complete!'}
+        {title}
       </h1>
 
-      <div className="flex flex-col sm:flex-row justify-center gap-6 w-full max-w-3xl my-6 flex-wrap">
-        {/* TOTAL XP Card */}
-        <div className="flex-1 rounded-xl overflow-hidden border-2 border-duo-border min-w-32 shadow-[0_4px_0_0_#37464f]">
-            <div className="bg-yellow-400 p-3">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Total XP</h2>
-            </div>
-            <div className="p-6 bg-duo-dark flex items-center justify-center gap-3">
-              <Zap className="w-6 h-6 text-yellow-400" fill="currentColor" />
-              <span className="text-2xl font-black text-white">{perfect ? 14 : 14}</span>
-            </div>
-          </div>
+      {subtitle && (
+        <p className="text-lg text-duo-gray font-bold mb-6">
+          {subtitle}
+        </p>
+      )}
 
-          {/* ACCURACY Card */}
-          <div className="flex-1 rounded-xl overflow-hidden border-2 border-duo-border min-w-32 shadow-[0_4px_0_0_#37464f]">
+      <div className="flex flex-col sm:flex-row justify-center gap-6 w-full max-w-2xl my-6 flex-wrap">
+        {/* ACCURACY Card */}
+        <div className="flex-1 rounded-xl overflow-hidden border-2 border-duo-border min-w-32 shadow-[0_4px_0_0_#37464f]">
             <div className="bg-green-500 p-3">
               <h2 className="text-sm font-bold text-white uppercase tracking-wider">Accuracy</h2>
             </div>
@@ -93,26 +114,28 @@ const LessonComplete = ({ route, navigation }: LessonCompleteProps) => {
             </div>
             <div className="p-6 bg-duo-dark flex items-center justify-center gap-3">
               <img src={diamond} alt="Diamond" className="w-7 h-7 object-contain" />
-              <span className="text-2xl font-black text-white">+{perfect ? 10 : 5}</span>
+              <motion.span className="text-2xl font-black text-white">+{gems}</motion.span>
             </div>
           </div>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-duo-dark p-6 border-t-2 border-duo-border">
         <div className="max-w-sm mx-auto flex gap-4">
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => navigation.restartLesson()}
-            className="w-1/2 py-4 text-sm"
-          >
-            Try Again
-          </Button>
+          {!lessonType && (
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={() => navigation.restartLesson()}
+              className="w-1/2 py-4 text-sm"
+            >
+              Try Again
+            </Button>
+          )}
           <Button
             variant="primary"
             size="lg"
             onClick={() => navigation.navigate("learn")}
-            className="w-1/2 py-4 text-sm"
+            className={!lessonType ? "w-1/2 py-4 text-sm" : "w-full py-4 text-sm"}
           >
             Continue
           </Button>

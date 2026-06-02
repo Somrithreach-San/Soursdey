@@ -1,6 +1,13 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import type { User } from '@supabase/supabase-js'
+import { type User, AuthApiError } from '@supabase/supabase-js'
+
+export class RateLimitError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'RateLimitError'
+  }
+}
 import {
   getUserProfile,
   updateUserProfile,
@@ -10,9 +17,11 @@ import {
   removeDiamonds,
   addHearts,
   removeHearts,
+  getUserQuests,
   type Profile,
+  type UserQuest, // Import the new type
 } from '../services'
-
+import { addStreakFreezer as addStreakFreezerToUser, refreshDailyQuests } from '../services/userService'
 interface UserContextType {
   // Auth state
   user: User | null
@@ -23,20 +32,24 @@ interface UserContextType {
 
   // User data
   profile: Profile | null
+  quests: UserQuest[]
 
   // Functions
   login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string, username: string) => Promise<void>
+  signup: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
 
   // Profile update functions
   updateProfile: (updates: Partial<Omit<Profile, 'id' | 'created_at'>>) => Promise<void>
-  incrementUserStreak: () => Promise<void>
+  incrementUserStreak: (options?: { lessonCompleted: boolean }) => Promise<{ newStreak: number; streakChanged: boolean } | null | undefined>
   addUserDiamonds: (amount: number) => Promise<void>
   removeUserDiamonds: (amount: number) => Promise<void>
   addUserHearts: (amount: number) => Promise<void>
   removeUserHearts: (amount: number) => Promise<void>
+  claimUserQuestReward: (questId: string) => Promise<void>
+  addStreakFreezer: (quantity?: number) => Promise<void>
+  resetPassword: (email: string) => Promise<void>
 }
 
 export const UserContext = createContext<UserContextType | undefined>(undefined)
@@ -48,10 +61,62 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [quests, setQuests] = useState<UserQuest[]>([])
+  // Guard ref: prevents onAuthStateChange from interfering during signup flow
+  const isSigningUpRef = useRef(false)
 
-  // Check auth status on mount
+  // Check auth status on mount and set up auth state listener
   useEffect(() => {
     checkAuthStatus()
+    
+    // Listen for auth changes.
+    // onAuthStateChange fires once immediately on mount AND on any future auth events.
+    // We keep it lightweight to avoid racing with checkAuthStatus() on initial load.
+    // The isSigningUpRef guard prevents it from interfering with the signup flow.
+    // For cross-tab email confirmation, we detect a session appearing with no loaded
+    // profile and trigger a non-blocking data fetch.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Skip listener logic entirely while signup is in progress
+      if (isSigningUpRef.current) return
+
+      if (session?.user) {
+        // Only set authenticated state if the user has confirmed their email
+        // If email is not confirmed, don't log them in automatically
+        if (session.user.email_confirmed_at) {
+          setUser(session.user)
+          setUserId(session.user.id)
+          setIsAuthenticated(true)
+          // For cross-tab SIGNED_IN (e.g. email confirmation link opened in new tab),
+          // load profile/quests if they haven't been loaded yet.
+          if (event === 'SIGNED_IN') {
+            setProfile(prev => {
+              if (prev === null) {
+                fetchUserProfile(session.user.id).catch(console.error)
+                fetchUserQuests(session.user.id).catch(console.error)
+              }
+
+              return prev
+            })
+          }
+        } else {
+          // Email not confirmed, sign out to force manual login after confirmation
+          supabase.auth.signOut().catch(console.error)
+          setUser(null)
+          setUserId(null)
+          setIsAuthenticated(false)
+          setProfile(null)
+          setQuests([])
+        }
+      } else {
+        setUser(null)
+        setUserId(null)
+        setIsAuthenticated(false)
+        setProfile(null)
+        setQuests([])
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const checkAuthStatus = async () => {
@@ -65,7 +130,28 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setUser(session.user)
         setUserId(session.user.id)
         setIsAuthenticated(true)
-        await fetchUserProfile(session.user.id)
+        try {
+          await fetchUserProfile(session.user.id)
+          await fetchUserQuests(session.user.id) // Fetch quests on login
+        } catch (err) {
+          // If profile not found (user deleted from database), clear ALL auth state
+          if (err instanceof Error && err.message.includes('PGRST116')) {
+            console.log('Profile not found - clearing stale auth state')
+            // Clear local storage to fix cache issues
+            localStorage.clear()
+            sessionStorage.clear()
+            // Sign out from supabase
+            await supabase.auth.signOut()
+            // Reset all state
+            setUser(null)
+            setUserId(null)
+            setIsAuthenticated(false)
+            setProfile(null)
+            setQuests([])
+          } else {
+            throw err
+          }
+        }
       } else {
         setUser(null)
         setUserId(null)
@@ -88,6 +174,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const fetchUserQuests = async (id: string) => {
+    try {
+      // Refresh daily quests first - this will automatically reset quests if it's a new day
+      await refreshDailyQuests(id);
+      
+      // Fetch the updated quests
+      let questsData = await getUserQuests(id);
+      setQuests(questsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch user quests');
+    }
+  };
+
   const login = async (email: string, password: string) => {
     try {
       setError(null)
@@ -105,6 +204,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setUserId(data.user.id)
         setIsAuthenticated(true)
         await fetchUserProfile(data.user.id)
+        await fetchUserQuests(data.user.id) // Fetch quests on login
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed'
@@ -115,11 +215,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signup = async (email: string, password: string, username: string) => {
+  const signup = async (email: string, password: string) => {
+    // Engage the guard so onAuthStateChange doesn't interfere
+    isSigningUpRef.current = true
     try {
       setError(null)
       setIsLoading(true)
-
+      
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -128,19 +230,27 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (authError) throw authError
 
       if (data.user) {
-        // Create profile
-        const newProfile = await createProfile(data.user.id, username)
-        setUser(data.user)
-        setUserId(data.user.id)
-        setIsAuthenticated(true)
-        setProfile(newProfile)
+        // Create default username from email
+        const defaultUsername = email.split('@')[0];
+        // Create profile in DB and assign quests
+        await createProfile(data.user.id, defaultUsername, email)
+
+        // Clear any existing user state and sign out to force manual login after email confirmation
+        await supabase.auth.signOut();
+        setUser(null)
+        setUserId(null)
+        setProfile(null)
+        setIsAuthenticated(false);
+        // Don't return anything - let SignupPage's isSuccess state handle the UI
       }
     } catch (err) {
+      console.error('Signup error:', err);
       const message = err instanceof Error ? err.message : 'Signup failed'
       setError(message)
       throw err
     } finally {
       setIsLoading(false)
+      isSigningUpRef.current = false
     }
   }
 
@@ -152,6 +262,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setUserId(null)
       setIsAuthenticated(false)
       setProfile(null)
+      setQuests([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Logout failed')
       throw err
@@ -163,6 +274,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     try {
       setError(null)
       await fetchUserProfile(userId)
+      await fetchUserQuests(userId) // Also refresh quests
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh profile')
     }
@@ -171,25 +283,58 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (
     updates: Partial<Omit<Profile, 'id' | 'created_at'>>
   ) => {
-    if (!userId) return
+    if (!userId || !profile) return;
+  
+    // Optimistic UI update
+    const previousProfile = profile;
+    const newProfile = { ...profile, ...updates };
+    setProfile(newProfile);
+  
     try {
-      setError(null)
-      await updateUserProfile(userId, updates)
-      await refreshProfile() // This ensures the profile is fresh everywhere
+      setError(null);
+      // Persist changes to the database
+      await updateUserProfile(userId, updates);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile')
-      throw err
+      // If the update fails, revert the optimistic update and show an error
+      setProfile(previousProfile);
+      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      throw err;
     }
-  }
+  };
 
-  const incrementUserStreak = async () => {
+  const incrementUserStreak = async (_options?: { lessonCompleted: boolean }) => {
+    if (!userId || !profile) return null;
+  
+    // Optimistic UI update
+    const previousProfile = profile;
+  
+    try {
+      setError(null);
+      // Call the service and get the result
+      const result = await incrementStreak(userId);
+      
+      // Update local state with the new streak from the result
+      if (result && result.streakChanged) {
+        setProfile(prev => prev ? { ...prev, streak: result.newStreak } : null);
+      }
+      
+      return result;
+    } catch (err) {
+      // Revert on failure
+      setProfile(previousProfile);
+      setError(err instanceof Error ? err.message : 'Failed to increment streak');
+      throw err;
+    }
+  };
+
+  const addStreakFreezer = async (quantity: number = 1) => {
     if (!userId) return
     try {
       setError(null)
-      await incrementStreak(userId)
+      await addStreakFreezerToUser(userId, quantity)
       await refreshProfile()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to increment streak')
+      setError(err instanceof Error ? err.message : 'Failed to add streak freezer')
       throw err
     }
   }
@@ -242,6 +387,48 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const claimUserQuestReward = async (questId: string) => {
+    if (!userId) return;
+    try {
+      setError(null);
+      const questToClaim = quests.find((q: UserQuest) => q.id === questId);
+
+      if (questToClaim && questToClaim.is_completed && !questToClaim.is_claimed) {
+        // Update the quest as claimed in the database
+        await supabase
+          .from('user_quests')
+          .update({ is_claimed: true })
+          .eq('id', questId);
+
+        // Add the reward diamonds to the user's profile
+        await addDiamonds(userId, questToClaim.quests.reward);
+
+        // Refresh the quests and profile to show the changes
+        await refreshProfile();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to claim quest reward');
+      throw err;
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      setError(null)
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/update-password',
+      })
+      if (error) throw error
+    } catch (err) {
+      console.error('Password reset error:', err)
+      if (err instanceof AuthApiError && err.status === 429) {
+        throw new RateLimitError('Too many requests. Please try again in a few minutes.')
+      }
+      // For other errors, throw a generic message for security
+      throw new Error('Failed to send password reset email.')
+    }
+  }
+
   const value: UserContextType = {
     user,
     userId,
@@ -249,16 +436,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
     isLoading,
     error,
     profile,
+    quests,
     login,
     signup,
     logout,
     refreshProfile,
     updateProfile,
     incrementUserStreak,
-    addUserDiamonds,
-    removeUserDiamonds,
-    addUserHearts,
-    removeUserHearts,
+  addUserDiamonds,
+  removeUserDiamonds,
+  addUserHearts,
+  removeUserHearts,
+  claimUserQuestReward,
+  addStreakFreezer,
+  resetPassword,
   }
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>

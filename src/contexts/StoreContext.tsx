@@ -1,10 +1,8 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 import {
   getAllStoreItems,
-  getStoreItemsByType,
   getUserInventory,
   purchaseStoreItem,
-  useStoreItem,
   type StoreItem,
   type UserInventory,
 } from '../services'
@@ -19,10 +17,8 @@ interface StoreContextType {
 
   // Functions
   fetchStoreItems: () => Promise<void>
-  fetchStoreItemsByType: (type: 'heart' | 'diamond' | 'power-up') => Promise<StoreItem[] | null>
   fetchUserInventory: () => Promise<void>
   buyItem: (storeItemId: string, quantity?: number) => Promise<void>
-  consumeItem: (storeItemId: string) => Promise<void>
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined)
@@ -42,22 +38,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setStoreItems(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch store items')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const fetchStoreItemsByType = async (
-    type: 'heart' | 'diamond' | 'power-up'
-  ): Promise<StoreItem[] | null> => {
-    try {
-      setError(null)
-      setIsLoading(true)
-      const data = await getStoreItemsByType(type)
-      return data
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch store items')
-      return null
     } finally {
       setIsLoading(false)
     }
@@ -104,42 +84,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const consumeItem = async (storeItemId: string) => {
-    if (!userId) return
-    try {
-      setError(null)
-      const remaining = await useStoreItem(userId, storeItemId)
-      if (remaining !== null && userInventory) {
-        if (remaining === 0) {
-          setUserInventory((prev) =>
-            prev ? prev.filter((i) => i.store_item_id !== storeItemId) : null
-          )
-        } else {
-          setUserInventory((prev) =>
-            prev
-              ? prev.map((i) =>
-                  i.store_item_id === storeItemId ? { ...i, quantity: remaining } : i
-                )
-              : null
-          )
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to consume item')
-      throw err
-    }
-  }
-
   const value: StoreContextType = {
     storeItems,
     userInventory,
     isLoading,
     error,
     fetchStoreItems,
-    fetchStoreItemsByType,
     fetchUserInventory,
     buyItem,
-    consumeItem,
   }
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

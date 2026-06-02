@@ -7,10 +7,14 @@
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   username TEXT NOT NULL,
+  email TEXT,
   avatar_url TEXT,
   streak INT DEFAULT 0,
-  diamonds INT DEFAULT 0,
+  diamonds INT DEFAULT 10,
   hearts INT DEFAULT 5,
+  last_heart_update TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  last_streak_update TIMESTAMP WITH TIME ZONE,
+  streak_dates TEXT[] DEFAULT ARRAY[]::TEXT[],
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -164,7 +168,7 @@ ON CONFLICT DO NOTHING;
 -- Insert sample store items
 INSERT INTO store_items (title, description, cost, type, icon_url) VALUES
   ('Refill Hearts', 'Get back to full health!', 450, 'heart', NULL),
-  ('Extra Hearts', 'Get 3 bonus hearts', 300, 'heart', NULL),
+  ('Extra Heart', 'Get 1 bonus heart', 300, 'heart', NULL),
   ('Streak Freeze', 'Keep your streak alive if you miss a day', 200, 'power-up', NULL),
   ('2x XP Boost', 'Double your experience gains for 1 hour', 150, 'power-up', NULL)
 ON CONFLICT DO NOTHING;

@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { ArrowLeft, Check, Star, Languages, Trophy } from 'lucide-react'
+import { Check, Star, Languages, Trophy } from 'lucide-react'
 import { useLottie } from 'lottie-react'
 import { cn } from '../lib/utils'
-import { useLesson } from '../contexts'
+import { useUser, useLesson } from '../contexts'
 import { type Lesson } from '../services'
 import { Loader } from '../components/ui/Loader'
 import characterAnimation1 from '../assets/peacock.json'
@@ -31,6 +31,9 @@ const CharacterAnimation = ({ animationData, speed = 0.5 }: { animationData: unk
     animationData,
     loop: true,
     autoplay: true,
+    rendererSettings: {
+      preserveAspectRatio: 'xMidYMid slice'
+    }
   }), [animationData])
 
   const lottieObj = useLottie(options)
@@ -52,6 +55,7 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
     fetchLessons,
     fetchLessonProgress
   } = useLesson()
+  const { profile } = useUser()
   const isLoading = loadingStates.units
   const [activeUnit, setActiveUnit] = useState<any>(null)
   const unitRefs = useRef<{[key: string]: HTMLDivElement | null}>({})
@@ -120,42 +124,69 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
     return units[0]?.id || null;
   }, [units, lessons, lessonProgress, completedLessons]);
 
+  const firstUncompletedLessonId = useMemo(() => {
+    if (!activeUnitId || !lessons) return null;
+
+    const activeUnitLessons = lessons.filter(l => l.unit_id === activeUnitId);
+
+    for (const lesson of activeUnitLessons) {
+      if (!completedLessons[lesson.id]) {
+        return lesson.id;
+      }
+    }
+
+    return null;
+  }, [activeUnitId, lessons, completedLessons]);
+
+  const unitToSectionMap = useMemo(() => {
+    if (!units) return {};
+    return units.reduce((acc, unit) => {
+      acc[unit.id] = unit.section;
+      return acc;
+    }, {} as { [key: string]: number });
+  }, [units]);
 
   useEffect(() => {
     if (units && units.length > 0 && !activeUnit) {
-      const colors = defaultColorSchemes[units[0].unit.toString()] || defaultColorSchemes['1']
-      setActiveUnit({ ...units[0], ...colors, steps: [] })
+      const firstUnit = units[0];
+      const colors = defaultColorSchemes[firstUnit.unit.toString()] || defaultColorSchemes['1'];
+      setActiveUnit({ ...firstUnit, ...colors, steps: [] });
     }
-  }, [units])
+  }, [units, activeUnit]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         const intersecting = entries
-          .filter(entry => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
 
         if (intersecting.length > 0) {
-          const unitId = intersecting[0].target.id
-          const unit = units?.find(u => u.id === unitId)
-          if (unit) {
-            const colors = defaultColorSchemes[unit.unit.toString()] || defaultColorSchemes['1']
-            setActiveUnit({ ...unit, ...colors, steps: [] })
+          const topMostUnitId = intersecting[0].target.id;
+
+          // Only update state if the active unit has changed to prevent flickering
+          if (activeUnit?.id !== topMostUnitId) {
+            const unit = units?.find((u) => u.id === topMostUnitId);
+            if (unit) {
+              const section = unitToSectionMap[unit.id] || unit.section;
+              const colors = defaultColorSchemes[unit.unit.toString()] || defaultColorSchemes['1'];
+              setActiveUnit({ ...unit, section, ...colors, steps: [] });
+            }
           }
         }
       },
       {
-        threshold: 0,
-        rootMargin: '-80px 0px -80% 0px'
+        threshold: 0.1, // A single, small threshold is more stable
+        rootMargin: '-80px 0px -75% 0px', // Observe a smaller band at the top of the viewport
       }
-    )
+    );
 
     Object.values(unitRefs.current).forEach((ref) => {
-      if (ref) observer.observe(ref)
-    })
+      if (ref) observer.observe(ref);
+    });
 
-    return () => observer.disconnect()
-  }, [units])
+    return () => observer.disconnect();
+  }, [units, activeUnit, unitToSectionMap]);
 
   if (isLoading) {
     return (
@@ -174,33 +205,27 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
   }
 
   return (
-    <div className="flex-1 min-h-screen flex flex-col items-center pb-24">
+    <div className="flex-1 min-h-screen flex flex-col items-center pb-32 lg:pb-24">
       {/* Sticky Unit Header */}
-      <div className="sticky top-0 z-50 w-full bg-duo-dark px-4 pt-8 pb-4">
+      <div className="sticky top-0 z-50 w-full bg-duo-dark px-4 pt-6 md:pt-8 pb-3 md:pb-4">
         <div 
-          className="rounded-2xl p-4 flex items-center justify-between shadow-lg relative overflow-hidden"
+          className="rounded-2xl p-3 md:p-4 flex items-center justify-between shadow-lg relative overflow-hidden"
           style={{ 
             backgroundColor: activeUnit?.color || '#58cc02',
             boxShadow: `0 4px 0 0 ${activeUnit?.darkColor || '#46a302'}`
           }}
         >
-          <div className="flex flex-col gap-1.5 relative z-10">
-            <div className="flex items-center gap-2.5">
-              <button 
-                style={{ color: activeUnit?.lightColor || '#a5e67e' }}
-              >
-                <ArrowLeft className="w-4.5 h-4.5" />
-              </button>
-              
+          <div className="flex flex-col gap-1 relative z-10 pl-2 md:pl-4">
+            <div className="flex items-center">
               <h2 
-                className="font-black uppercase tracking-widest text-[11px]"
+                className="font-black uppercase tracking-widest text-[10px] md:text-sm"
                 style={{ color: activeUnit?.lightColor || '#a5e67e' }}
               >
                 Section {activeUnit?.section || 1}, Unit {activeUnit?.unit || 1}
               </h2>
             </div>
 
-            <h1 className="text-lg font-black text-white ml-7">
+            <h1 className="text-base md:text-lg font-black text-white">
               {activeUnit?.title || 'Loading...'}
             </h1>
           </div>
@@ -232,6 +257,7 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
                 // Lock all lessons that are not in the active unit.
                 // For the active unit, use the existing progression logic.
                 const isLocked = unit.id !== activeUnitId || (index > 0 && !completedLessons[unitLessons[index - 1]?.id]);
+                const isCurrent = lesson.id === firstUncompletedLessonId;
 
 
                 return (
@@ -244,11 +270,11 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
                     )}
                     style={index === 1 ? { transform: 'translateX(-45px)' } : index === 3 ? { transform: 'translateX(45px)' } : undefined}
                   >
-                    {index === 0 && (
+                    {isCurrent && (
                       <div className="absolute -top-16 z-20 bg-duo-dark border-2 border-duo-border font-black text-sm px-6 py-3 rounded-xl animate-bounce uppercase tracking-widest whitespace-nowrap shadow-lg"
                         style={{ color: unitWithColors.color }}
                       >
-                        {unitIdx === 0 ? "START" : "Jump Here?"}
+                        {"START"}
                       <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-4 bg-duo-dark border-r-2 border-b-2 border-duo-border rotate-45 z-[-1]" />
                       </div>
                     )}
@@ -280,12 +306,15 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
                       {/* Button Face */}
                       <button 
                         onClick={() => {
-                          if (!isLocked && lesson.audio_src) {
+                          if (isLocked) return
+                          if (profile && profile.hearts === 0) {
+                            alert("You have no hearts left. Please refill in the store to continue.");
+                            return;
+                          }
+                          if (lesson.audio_src) {
                             playAudio(lesson.audio_src)
                           }
-                          if (!isLocked) {
-                            onStartLesson?.(lesson.id)
-                          }
+                          onStartLesson?.(lesson.id)
                         }}
                         disabled={isLocked}
                         className={cn(
@@ -307,186 +336,24 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
                     </div>
                   </div>
                 )
-              })}                  {/* START: Fake static levels for Unit 1 */}
-                  {unitIdx === 0 && [
-                    { icon: Star, offset: 'translate-x-0' },
-                    { icon: Languages, offset: 'translate-x-[45px]' },
-                    { icon: Trophy, offset: 'translate-x-0' },
-                  ].map((step, index) => {
-                    const Icon = step.icon;
-                    return (
-                      <div 
-                        key={`fake-${index}`} 
-                        className={cn(
-                          "relative flex flex-col items-center",
-                          step.offset
-                        )}
-                      >
-                        <div className="relative group">
-                          {/* Shadow/Bottom layer */}
-                          <div 
-                            className="absolute top-[10px] left-0 w-16 h-[56px] rounded-[100%] bg-[#2e383d]"
-                          />
-                          
-                          {/* Button Face - Locked */}
-                          <button 
-                            disabled={true}
-                            className="w-16 h-[56px] rounded-[100%] flex items-center justify-center transition-all relative bg-duo-border text-duo-gray cursor-not-allowed opacity-50 grayscale shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)]"
-                          >
-                            <Icon className="w-7 h-7 stroke-[3px]" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {/* END: Fake static levels for Unit 1 */}
+              })}
             </div>
 
             {/* Unit Divider */}
-            {/* {unitIdx < units.length - 1 && ( */}
-            {unitIdx < units.length - 1 && units[unitIdx + 1].title !== 'Discuss professions' && (
+            {unitIdx < units.length - 1 && (
               <UnitDivider title={units[unitIdx + 1].title} />
             )}
           </div>
         )
       })}
 
-      {/* Static Unit 2 - Display Only */}
-      <div 
-        key="static-unit-2"
-        id="unit-2-static"
-        className="w-full flex flex-col items-center"
-      >
-        <div className={cn(
-          "flex flex-col items-center gap-16 pb-24 pt-16"
-        )}>
-          {[
-            { icon: Languages, offset: 'translate-x-0', start: true },
-            { icon: Star, offset: 'translate-x-[-45px]' },
-            { icon: Languages, offset: 'translate-x-0' },
-            { icon: Star, offset: 'translate-x-[45px]' },
-            { icon: Trophy, offset: 'translate-x-0' },
-          ].map((step, index) => {
-            const Icon = step.icon
-            return (
-              <div 
-                key={index} 
-                className={cn(
-                  "relative flex flex-col items-center",
-                  step.offset
-                )}
-              >
-                {step.start && (
-                  <div className="absolute -top-16 z-20 bg-duo-dark border-2 border-duo-border font-black text-sm px-6 py-3 rounded-xl animate-bounce uppercase tracking-widest whitespace-nowrap shadow-lg"
-                    style={{ color: '#ff9600' }}
-                  >
-                    Jump Here?
-                    <div className="absolute -bottom-[9px] left-1/2 -translate-x-1/2 w-4 h-4 bg-duo-dark border-r-2 border-b-2 border-duo-border rotate-45 z-[-1]" />
-                  </div>
-                )}
-                
-                <div className="relative group">
-                  {/* Unit 2 Lottie Animation */}
-                  {index === 3 && (
-                    <div className="absolute right-32 -top-20 w-44 h-44 pointer-events-none z-0 scale-x-[-1]">
-                      <CharacterAnimation animationData={characterAnimation2} />
-                    </div>
-                  )}
-                  
-                  {/* Shadow/Bottom layer */}
-                  <div 
-                    className="absolute top-[10px] left-0 w-16 h-[56px] rounded-[100%] bg-[#2e383d]"
-                  />
-                  
-                  {/* Button Face - Locked */}
-                  <button 
-                    disabled={true}
-                    className="w-16 h-[56px] rounded-[100%] flex items-center justify-center transition-all relative bg-duo-border text-duo-gray cursor-not-allowed opacity-50 grayscale shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)]"
-                  >
-                    <Icon className="w-7 h-7 stroke-[3px]" />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="w-full flex items-center gap-6 my-24">
-          <div className="flex-1 h-[2px] bg-duo-border"></div>
-          <span className="text-duo-gray font-bold uppercase tracking-[0.2em] text-sm whitespace-nowrap">
-            Discuss professions
-          </span>
-          <div className="flex-1 h-[2px] bg-duo-border"></div>
-        </div>
-      </div>
-
-      {/* Static Unit 3 - Display Only */}
-      <div 
-        key="static-unit-3"
-        id="unit-3-static"
-        className="w-full flex flex-col items-center"
-      >
-        <div className={cn(
-          "flex flex-col items-center gap-16 pb-24 pt-16"
-        )}>
-          {[
-            { icon: Languages, offset: 'translate-x-0', start: true },
-            { icon: Star, offset: 'translate-x-[-45px]' },
-            { icon: Languages, offset: 'translate-x-0' },
-            { icon: Star, offset: 'translate-x-[45px]' },
-            { icon: Trophy, offset: 'translate-x-0' },
-          ].map((step, index) => {
-            const Icon = step.icon
-            return (
-              <div 
-                key={index} 
-                className={cn(
-                  "relative flex flex-col items-center",
-                  step.offset
-                )}
-              >
-                {step.start && (
-                  <div className="absolute -top-16 z-20 bg-duo-dark border-2 border-duo-border font-black text-sm px-6 py-3 rounded-xl animate-bounce uppercase tracking-widest whitespace-nowrap shadow-lg"
-                    style={{ color: '#B68758' }}
-                  >
-                    Jump Here?
-                    <div className="absolute -bottom-[9px] left-1/2 -translate-x-1/2 w-4 h-4 bg-duo-dark border-r-2 border-b-2 border-duo-border rotate-45 z-[-1]" />
-                  </div>
-                )}
-                
-                <div className="relative group">
-                  {/* Unit 3 Lottie Animation */}
-                  {index === 1 && (
-                    <div className="absolute left-28 -top-20 w-44 h-44 pointer-events-none z-0">
-                      <CharacterAnimation animationData={characterAnimation3} />
-                    </div>
-                  )}
-                  
-                  {/* Shadow/Bottom layer */}
-                  <div 
-                    className="absolute top-[10px] left-0 w-16 h-[56px] rounded-[100%] bg-[#2e383d]"
-                  />
-                  
-                  {/* Button Face - Locked */}
-                  <button 
-                    disabled={true}
-                    className="w-16 h-[56px] rounded-[100%] flex items-center justify-center transition-all relative bg-duo-border text-duo-gray cursor-not-allowed opacity-50 grayscale shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)]"
-                  >
-                    <Icon className="w-7 h-7 stroke-[3px]" />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
       {/* Coming Soon Section */}
-      <div className="w-full flex flex-col items-center mt-12 pb-24">
-        <h3 className="text-xl font-bold text-duo-gray opacity-50 tracking-wide">
+      <div className="my-16 text-center">
+        <h3 className="text-lg font-bold uppercase tracking-wider text-duo-gray opacity-50">
           Coming Soon!
         </h3>
       </div>
+
       <audio ref={audioRef} />
     </div>
   )
