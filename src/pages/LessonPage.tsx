@@ -389,8 +389,14 @@ export const LessonPage = ({
 
       // Add gems: 30 for perfect/flawless, 15 for normal lessons
       const gemsToAdd = mistakes === 0 ? 30 : 15
+      // Add XP: 20 for perfect, 10 for normal
+      const xpToAdd = mistakes === 0 ? 20 : 10
+
       if (profile) {
-        await updateProfile({ diamonds: (profile.diamonds || 0) + gemsToAdd })
+        await updateProfile({ 
+          diamonds: (profile.diamonds || 0) + gemsToAdd,
+          xp: (profile.xp || 0) + xpToAdd 
+        })
         // Increment streak after completing lesson
         await incrementUserStreak({ lessonCompleted: true })
       }

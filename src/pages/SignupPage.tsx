@@ -3,6 +3,7 @@ import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useUser } from '../contexts'
 import logo from '../assets/sursdey_logo.png' // Import correct logo file
+import { Loader } from '../components/ui/Loader'
 
 export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
   const { signup, error } = useUser()
@@ -188,8 +189,17 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
                 : "bg-duo-green text-white shadow-brutal-green hover:bg-[#61e002] active:translate-y-1 active:shadow-none"
             )}
           >
-            {isLoading ? 'Creating account...' : 'Sign Up'}
-            {!isLoading && <ArrowRight className="w-5 h-5" />}
+            {isLoading ? (
+              <>
+                <Loader className="w-5 h-5 text-white" />
+                <span>Creating account...</span>
+              </>
+            ) : (
+              <>
+                <span>Sign Up</span>
+                <ArrowRight className="w-5 h-5" />
+              </>
+            )}
           </button>
         </form>
 

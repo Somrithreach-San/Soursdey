@@ -292,7 +292,7 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
             className="flex items-center gap-2 px-6 py-3 bg-duo-red border-2 border-duo-red rounded-xl text-white font-bold uppercase tracking-wider shadow-[0_4px_0_0_#d33131] hover:bg-[#ff5c5c] active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {logoutLoading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <Loader className="w-5 h-5 text-white" />
             ) : (
               <LogOut className="w-5 h-5" />
             )}

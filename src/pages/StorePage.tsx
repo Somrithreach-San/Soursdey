@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
-import { Check, X, Loader2 } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { motion } from 'framer-motion'
 import { useStore } from '../contexts'
@@ -7,6 +7,7 @@ import { UserContext } from '../contexts/UserContext'
 import hearts from '../assets/hearts.png'
 import diamond from '../assets/diamond.png'
 import ice from '../assets/ice.png'
+import { Loader } from '../components/ui/Loader'
 
 interface FeatureListProps {
   features: { label: string; included: boolean }[]
@@ -318,7 +319,7 @@ export const StorePage = () => {
                         className="flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 border-duo-border rounded-xl hover:bg-white/5 transition-all shadow-[0_2px_0_0_#37464f] active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isPurchasing === item.id ? (
-                          <Loader2 className="w-4 h-4 md:w-5 md:h-5 text-white animate-spin" />
+                          <Loader className="w-4 h-4 md:w-5 md:h-5 text-white" />
                         ) : (
                           <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">BUY</span>
                         )}
@@ -352,7 +353,7 @@ export const StorePage = () => {
                         className="flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 border-duo-border rounded-xl hover:bg-white/5 transition-all shadow-[0_2px_0_0_#37464f] active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isPurchasing === item.id ? (
-                          <Loader2 className="w-4 h-4 md:w-5 md:h-5 text-white animate-spin" />
+                          <Loader className="w-4 h-4 md:w-5 md:h-5 text-white" />
                         ) : (
                           <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">BUY</span>
                         )}

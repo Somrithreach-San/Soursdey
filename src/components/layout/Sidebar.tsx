@@ -2,6 +2,7 @@ import { cn } from '../../lib/utils'
 import homeIcon from '../../assets/home.png'
 import letterIcon from '../../assets/letter.png'
 import exerciseIcon from '../../assets/excercise.png'
+import leaderboardIcon from '../../assets/leaderboard.png'
 import storeIcon from '../../assets/store.png'
 import questIcon from '../../assets/Quest.png' // Import the correct quest icon
 
@@ -37,21 +38,24 @@ export const Sidebar = ({
   onLettersClick,
   onPracticeClick,
   onProfileClick,
-  onQuestsClick
+  onQuestsClick,
+  onLeaderboardClick
 }: { 
   userProfile: any,
-  currentView?: 'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'quests',
+  currentView?: 'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'quests' | 'leaderboard',
   onStoreClick?: () => void,
   onLearnClick?: () => void,
   onLettersClick?: () => void,
   onPracticeClick?: () => void,
   onProfileClick?: () => void,
-  onQuestsClick?: () => void
+  onQuestsClick?: () => void,
+  onLeaderboardClick?: () => void
 }) => {
   const menuItems = [
     { icon: homeIcon, label: 'Learn', view: 'learn' },
     { icon: letterIcon, label: 'Letters', view: 'letters' },
     { icon: exerciseIcon, label: 'Practice', view: 'practice' },
+    { icon: leaderboardIcon, label: 'Leaderboard', view: 'leaderboard' },
     { icon: questIcon, label: 'Quests', view: 'quests' }, // Use the correct quest icon
     { icon: storeIcon, label: 'Store', view: 'shop' },
     { icon: getAvatar(userProfile?.avatar_url), label: 'Profile', view: 'profile' },
@@ -79,6 +83,7 @@ export const Sidebar = ({
                   if (view === 'learn') onLearnClick?.()
                   if (view === 'letters') onLettersClick?.()
                   if (view === 'practice') onPracticeClick?.()
+                  if (view === 'leaderboard') onLeaderboardClick?.()
                   if (view === 'quests') onQuestsClick?.()
                   if (view === 'shop') onStoreClick?.()
                   if (view === 'profile') onProfileClick?.()
@@ -113,6 +118,7 @@ export const Sidebar = ({
                 if (view === 'learn') onLearnClick?.()
                 if (view === 'letters') onLettersClick?.()
                 if (view === 'practice') onPracticeClick?.()
+                if (view === 'leaderboard') onLeaderboardClick?.()
                 if (view === 'quests') onQuestsClick?.()
                 if (view === 'shop') onStoreClick?.()
                 if (view === 'profile') onProfileClick?.()

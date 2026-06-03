@@ -15,7 +15,7 @@ export const UsernameEditModal: FC<UsernameEditModalProps> = ({ isOpen, onClose,
 
   useEffect(() => {
     if (isOpen) {
-      setUsername(currentUsername)
+      setUsername(currentUsername === 'New User' ? '' : currentUsername)
       setError('')
       // Disable background scroll when modal is open
       document.body.style.overflow = 'hidden';
@@ -58,16 +58,13 @@ export const UsernameEditModal: FC<UsernameEditModalProps> = ({ isOpen, onClose,
         <h2 className="text-2xl font-black text-white mb-4">Edit Username</h2>
         
         <div className="mb-4">
-          <label htmlFor="username-input" className="text-duo-gray font-bold mb-2 block">
-            New username
-          </label>
           <input
             id="username-input"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="w-full text-lg font-bold text-white bg-duo-dark-blue border-2 border-duo-border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-duo-green"
-            placeholder="Enter new username"
+            placeholder="Set username"
           />
           {error && <p className="text-duo-red text-sm mt-2">{error}</p>}
         </div>
@@ -75,7 +72,7 @@ export const UsernameEditModal: FC<UsernameEditModalProps> = ({ isOpen, onClose,
         <div className="flex justify-end gap-4">
           <button 
             onClick={onClose}
-            className="px-6 py-2 bg-duo-gray/20 text-white font-bold rounded-lg hover:bg-duo-gray/30 transition-colors"
+            className="px-6 py-2 bg-duo-gray/20 text-white font-bold rounded-lg shadow-[0_3px_0_0_#37464f] hover:bg-duo-gray/30 transition-all active:translate-y-0.5 active:shadow-none"
           >
             Cancel
           </button>

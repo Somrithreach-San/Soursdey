@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Lock, Eye, EyeOff } from 'lucide-react'
+import { Loader } from '../components/ui/Loader'
 
 export const UpdatePasswordPage = () => {
   const [password, setPassword] = useState('')
@@ -100,8 +101,8 @@ export const UpdatePasswordPage = () => {
           >
             {isLoading ? (
               <div className="flex items-center justify-center">
-                <div className="w-6 h-6 border-4 border-t-transparent border-white rounded-full animate-spin"></div>
-                <span className="ml-2">UPDATING...</span>
+                <Loader className="w-5 h-5 text-white mr-2" />
+                <span>UPDATING...</span>
               </div>
             ) : (
               'Update Password'

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { calculateHeartsToRegenerate, MAX_HEARTS, HEART_REGENERATION_TIME } from '../lib/hearts'
 
 export interface Profile {
   id: string
@@ -8,6 +9,7 @@ export interface Profile {
   streak: number
   diamonds: number
   hearts: number
+  xp: number
   created_at: string
   last_heart_update: string
   last_streak_update?: string
@@ -56,6 +58,7 @@ export async function createProfile(userId: string, username: string, email: str
           streak: 0,
           diamonds: 10,
           hearts: 5,
+          xp: 0,
           created_at: new Date().toISOString(),
           last_heart_update: new Date().toISOString(),
           last_streak_update: null,
@@ -88,11 +91,94 @@ export async function getUserProfile(userId: string): Promise<Profile | null> {
       .eq('id', userId)
       .single()
 
-    if (error) throw error
+    if (error) {
+      // If profile doesn't exist, try to create it (self-healing)
+      if (error.code === 'PGRST116') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user && user.id === userId) {
+          const defaultUsername = user.email?.split('@')[0] || 'user'
+          return await createProfile(userId, defaultUsername, user.email || '')
+        }
+      }
+      throw error
+    }
+    
+    // Handle heart regeneration
+    const { heartsToAdd, needsUpdate } = calculateHeartsToRegenerate(data.hearts, data.last_heart_update);
+
+    if (needsUpdate && heartsToAdd > 0) {
+      const newHeartCount = Math.min(data.hearts + heartsToAdd, MAX_HEARTS);
+      const newLastHeartUpdate = new Date(new Date(data.last_heart_update).getTime() + heartsToAdd * HEART_REGENERATION_TIME).toISOString();
+
+      const { data: updatedData, error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          hearts: newHeartCount,
+          last_heart_update: newLastHeartUpdate
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+      
+      if (!updateError && updatedData) {
+        return updatedData;
+      }
+    }
+
     return data
   } catch (error) {
     console.error('Error fetching user profile:', error)
     return null
+  }
+}
+
+// Add XP to user profile
+export async function addXp(userId: string, amount: number): Promise<number | null> {
+  try {
+    const profile = await getUserProfile(userId)
+    if (!profile) return null
+
+    const newXp = (profile.xp || 0) + amount
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ xp: newXp })
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data.xp
+  } catch (error) {
+    console.error('Error adding XP:', error)
+    return null
+  }
+}
+
+// Get all profiles for leaderboard
+export async function getLeaderboardProfiles(): Promise<Profile[]> {
+  try {
+    // Try to order by XP first
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('xp', { ascending: false })
+
+    if (error) {
+      console.warn('Could not sort by XP (it might not exist in DB yet), falling back to diamonds:', error.message)
+      // Fallback to diamonds if XP column doesn't exist yet
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('diamonds', { ascending: false })
+      
+      if (fallbackError) throw fallbackError
+      return fallbackData || []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Error fetching leaderboard profiles:', error)
+    return []
   }
 }
 

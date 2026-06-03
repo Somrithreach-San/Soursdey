@@ -22,6 +22,9 @@
   --shadow-sidebar-active: 0 4px 0 0 var(--color-duo-active-border);
   
   --border-width-3: 3px;
+
+  --font-din: "DinRound", system-ui, -apple-system, sans-serif;
+  --font-khmer: "Kantumruy Pro", "DinRound", system-ui, sans-serif;
 }
 
 /* DinRound Pro */
@@ -89,24 +92,30 @@
   font-style: normal;
 }
 
-html {
-  font-size: 110%;
-}
-
 @layer base {
+  html {
+    font-size: 110%;
+  }
+
   body {
     @apply bg-duo-dark text-white antialiased;
-    font-family: 'DinRound', 'Kantumruy Pro', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-din);
   }
 }
 
-@layer utilities {
-  .font-khmer {
-    font-family: 'Kantumruy Pro', 'DinRound', system-ui, sans-serif;
+@utility scrollbar-hide {
+  &::-webkit-scrollbar {
+    display: none;
   }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @layer components {
+  .font-khmer {
+    font-family: var(--font-khmer);
+  }
+
   .brutal-button {
     @apply relative transition-all active:translate-y-[2px] active:shadow-none font-bold py-3.5 px-5 rounded-xl uppercase tracking-wider text-base;
   }
@@ -141,15 +150,15 @@ html {
   .sidebar-item.active {
     @apply bg-duo-active text-duo-green border-2 border-duo-active-border shadow-sidebar-active;
   }
-}
 
-/* Autofill overrides for dark mode */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active {
-  -webkit-text-fill-color: #ffffff !important;
-  transition: background-color 5000s ease-in-out 0s;
-  box-shadow: 0 0 0px 1000px #1a232e inset !important;
-  caret-color: white !important;
+  /* Autofill overrides for dark mode */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: #ffffff !important;
+    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: 0 0 0px 1000px #1a232e inset !important;
+    caret-color: white !important;
+  }
 }

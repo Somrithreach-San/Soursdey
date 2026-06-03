@@ -11,6 +11,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { LessonPage } from './pages/LessonPage'
 import LessonComplete from './pages/LessonComplete.tsx'
 import QuestsPage from './pages/QuestsPage'
+import LeaderboardPage from './pages/LeaderboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { UpdatePasswordPage } from './pages/UpdatePasswordPage'
@@ -25,11 +26,18 @@ import { type Challenge, type Lesson } from './services'
 function App() {
   const { user, isAuthenticated, isLoading, profile, quests, refreshProfile } = useUser()
   const [authView, setAuthView] = useState<'login' | 'signup'>('login')
-  const [view, setView] = useState<'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'lesson' | 'lesson-complete' | 'quests' | 'update-password'>('learn')
+  const [view, setView] = useState<'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'lesson' | 'lesson-complete' | 'quests' | 'leaderboard' | 'update-password'>('learn')
   const [userProgress, setUserProgress] = useState<any[]>([])
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
   const [currentLessonData, setCurrentLessonData] = useState<{ lesson: Lesson; challenges: Challenge[] } | null>(null)
-  const [lessonCompleteParams, setLessonCompleteParams] = useState<{ perfect: boolean; accuracy: number; duration: number; lessonType?: 'review' | 'mistakes' }>({ perfect: false, accuracy: 0, duration: 0 });
+  const [lessonCompleteParams, setLessonCompleteParams] = useState<{ 
+    perfect: boolean; 
+    accuracy: number; 
+    duration: number; 
+    lessonType?: 'review' | 'mistakes';
+    xpEarned?: number;
+    gemsEarned?: number;
+  }>({ perfect: false, accuracy: 0, duration: 0 });
 
   useEffect(() => {
     const hash = window.location.hash
@@ -86,83 +94,23 @@ function App() {
       }
     }
 
+    // Calculate XP and Gems for the summary page
+    const xpEarned = result.perfect ? 20 : 10;
+    const gemsEarned = result.perfect ? 30 : 15;
+
     setView('lesson-complete');
-    setLessonCompleteParams({ perfect: result.perfect, accuracy: result.accuracy, duration: result.duration, lessonType: result.lessonType });
+    setLessonCompleteParams({ 
+      perfect: result.perfect, 
+      accuracy: result.accuracy, 
+      duration: result.duration, 
+      lessonType: result.lessonType,
+      xpEarned,
+      gemsEarned
+    });
   }
 
   useEffect(() => {
     if (!user) return
-
-    const fetchUserProfile = async () => {
-      // Fetch user's profile or create if it doesn't exist
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (profileError && profileError.code === 'PGRST116') {
-        // Profile doesn't exist, so create it.
-        // Extract username from email by removing everything after @
-        const defaultUsername = user.email?.split('@')[0] || 'new_user'
-        const { error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            username: defaultUsername,
-            email: user.email,
-            avatar_url: lily, // Default avatar
-            streak: 0,
-            diamonds: 10,
-            hearts: 5,
-            created_at: new Date().toISOString(),
-            last_heart_update: new Date().toISOString(),
-            last_streak_update: null,
-            streak_dates: [],
-          })
-          .select('*')
-          .single()
-
-        if (createError) {
-            console.error('Error creating profile:', createError)
-          } else {
-            // Profile created, refresh context to get latest data
-            await refreshProfile()
-          }
-      } else if (profileError) {
-        console.error('Error fetching profile:', profileError)
-      } else {
-        const { heartsToAdd, needsUpdate } = calculateHeartsToRegenerate(profile.hearts, profile.last_heart_update);
-
-        if (needsUpdate && heartsToAdd > 0) {
-          const newHeartCount = Math.min(profile.hearts + heartsToAdd, MAX_HEARTS);
-          // To be fair to the user, we don't just set the update time to NOW().
-          // Instead, we add the time equivalent of the regenerated hearts to the last update time.
-          // This preserves any partial progress towards the next heart.
-          const newLastHeartUpdate = new Date(new Date(profile.last_heart_update).getTime() + heartsToAdd * HEART_REGENERATION_TIME).toISOString();
-
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ 
-              hearts: newHeartCount,
-              last_heart_update: newLastHeartUpdate
-            })
-            .eq('id', user.id)
-            .select('*')
-            .single();
-          
-          if (updateError) {
-            console.error('Error updating hearts:', updateError);
-            await refreshProfile(); // Refresh context on error to get current data
-          } else {
-            // Update context profile with regenerated hearts
-            await refreshProfile();
-          }
-        } else {
-          // Profile is already up-to-date in context
-        }
-      }
-    }
 
     const fetchUserProgress = async () => {
       const threeMonthsAgo = new Date()
@@ -178,9 +126,7 @@ function App() {
       setUserProgress(progress || [])
     }
 
-    fetchUserProfile()
     fetchUserProgress()
-
   }, [user])
 
   const handleUpdateUsername = async (newUsername: string) => {
@@ -267,6 +213,7 @@ function App() {
           onPracticeClick={() => setView('practice')}
           onProfileClick={() => setView('profile')}
           onQuestsClick={() => setView('quests')}
+          onLeaderboardClick={() => setView('leaderboard')}
         />
       )}
       
@@ -298,6 +245,7 @@ function App() {
             {view === 'letters' && <LettersPage />}
             {view === 'practice' && <PracticePage onStartLesson={handleStartReviewLesson} />}
             {view === 'quests' && <QuestsPage />}
+            {view === 'leaderboard' && <LeaderboardPage />}
             {view === 'profile' && (
               <ProfilePage 
                 user={user}
@@ -309,7 +257,7 @@ function App() {
             )}
           </main>
 
-          {(view === 'learn' || view === 'letters' || view === 'practice' || view === 'profile' || view === 'quests') && (
+          {(view === 'learn' || view === 'letters' || view === 'practice' || view === 'profile' || view === 'quests' || view === 'leaderboard') && (
             <div className="w-80 hidden xl:block">
               <RightSidebar 
                 userProfile={profile} 

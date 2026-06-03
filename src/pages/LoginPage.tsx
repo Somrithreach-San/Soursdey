@@ -3,6 +3,7 @@ import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useUser, RateLimitError } from '../contexts/UserContext'
 import logo from '../assets/sursdey_logo.png' // Import correct logo file
+import { Loader } from '../components/ui/Loader'
 
 export const LoginPage = ({ onSignupClick }: { onSignupClick?: () => void }) => {
   const { login, error, resetPassword } = useUser()
@@ -106,9 +107,16 @@ export const LoginPage = ({ onSignupClick }: { onSignupClick?: () => void }) => 
             <button
               type="submit"
               disabled={isLoading || !!resetMessage}
-              className="w-full py-4 px-6 bg-duo-green text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all shadow-brutal-green hover:bg-[#61e002] active:translate-y-1 active:shadow-none disabled:bg-gray-600 disabled:shadow-none disabled:cursor-not-allowed"
+              className="w-full py-4 px-6 bg-duo-green text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all shadow-brutal-green hover:bg-[#61e002] active:translate-y-1 active:shadow-none disabled:bg-gray-600 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isLoading ? 'Sending...' : 'Send Reset Link'}
+              {isLoading ? (
+                <>
+                  <Loader className="w-5 h-5 text-white" />
+                  <span>Sending...</span>
+                </>
+              ) : (
+                'Send Reset Link'
+              )}
             </button>
           </form>
 
@@ -229,8 +237,17 @@ export const LoginPage = ({ onSignupClick }: { onSignupClick?: () => void }) => 
                 : "bg-duo-green text-white shadow-brutal-green hover:bg-[#61e002] active:translate-y-1 active:shadow-none"
             )}
           >
-            {isLoading ? 'Logging in...' : 'Login'}
-            {!isLoading && <ArrowRight className="w-5 h-5" />}
+            {isLoading ? (
+              <>
+                <Loader className="w-5 h-5 text-white" />
+                <span>Logging in...</span>
+              </>
+            ) : (
+              <>
+                <span>Login</span>
+                <ArrowRight className="w-5 h-5" />
+              </>
+            )}
           </button>
         </form>
 

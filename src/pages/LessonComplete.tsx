@@ -1,5 +1,5 @@
 import { Button } from '../components/ui/Button'
-import { Target, Clock } from 'lucide-react'
+import { Target, Clock, Zap } from 'lucide-react'
 import Lottie from "lottie-react";
 import { motion, animate } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -21,7 +21,9 @@ interface LessonCompleteProps {
       perfect: boolean;
       accuracy: number;
       duration: number;
-      lessonType?: 'review' | 'mistakes'
+      lessonType?: 'review' | 'mistakes';
+      xpEarned?: number;
+      gemsEarned?: number;
     };
   };
   navigation: {
@@ -31,17 +33,29 @@ interface LessonCompleteProps {
 }
 
 const LessonComplete = ({ route, navigation }: LessonCompleteProps) => {
-  const { perfect, accuracy, duration, lessonType } = route.params;
+  const { perfect, accuracy, duration, lessonType, xpEarned, gemsEarned } = route.params;
   const [gems, setGems] = useState(0);
+  const [xp, setXp] = useState(0);
 
   useEffect(() => {
-    const targetGems = perfect ? 30 : 15;
-    const controls = animate(0, targetGems, {
+    const targetGems = gemsEarned || (perfect ? 30 : 15);
+    const targetXp = xpEarned || (perfect ? 20 : 10);
+
+    const gemControls = animate(0, targetGems, {
       duration: 1,
       onUpdate: (value: number) => setGems(Math.round(value)),
     });
-    return () => controls.stop();
-  }, [perfect]);
+
+    const xpControls = animate(0, targetXp, {
+      duration: 1,
+      onUpdate: (value: number) => setXp(Math.round(value)),
+    });
+
+    return () => {
+      gemControls.stop();
+      xpControls.stop();
+    };
+  }, [perfect, gemsEarned, xpEarned]);
 
   // Select animation and messages based on lesson type
   let animationData: any = perfect ? perfectLessonAnimation : goodLessonAnimation;
@@ -115,6 +129,17 @@ const LessonComplete = ({ route, navigation }: LessonCompleteProps) => {
             <div className="p-6 bg-duo-dark flex items-center justify-center gap-3">
               <img src={diamond} alt="Diamond" className="w-7 h-7 object-contain" />
               <motion.span className="text-2xl font-black text-white">+{gems}</motion.span>
+            </div>
+          </div>
+
+          {/* XP EARNED Card */}
+          <div className="flex-1 rounded-xl overflow-hidden border-2 border-duo-border min-w-32 shadow-[0_4px_0_0_#37464f]">
+            <div className="bg-[#ffc800] p-3">
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider">XP</h2>
+            </div>
+            <div className="p-6 bg-duo-dark flex items-center justify-center gap-3">
+              <Zap className="w-7 h-7 text-[#ffc800] fill-[#ffc800]" />
+              <motion.span className="text-2xl font-black text-white">+{xp}</motion.span>
             </div>
           </div>
       </div>

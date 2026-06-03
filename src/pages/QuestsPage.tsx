@@ -13,7 +13,7 @@ const QuestCard = ({ userQuest, onClaim }: { userQuest: UserQuest, onClaim: (id:
   return (
     <div className="w-full bg-[#1a232e] border-2 border-white/10 rounded-[20px] p-4 flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <img src={getQuestIcon(quest.icon)} alt={quest.title} className="w-10 h-10 object-contain" />
+        <img src={getQuestIcon(quest.icon)} alt={quest.title} className="w-[33px] h-[33px] object-contain" />
         <div className="flex-1">
           <h3 className="font-bold text-lg text-white mb-1">{quest.title}</h3>
           <p className="text-duo-gray text-sm font-bold">{quest.description}</p>
@@ -38,7 +38,7 @@ const QuestCard = ({ userQuest, onClaim }: { userQuest: UserQuest, onClaim: (id:
         <button
           onClick={() => onClaim(userQuest.id)}
           disabled={userQuest.is_claimed}
-          className="w-full bg-duo-green text-white font-black text-xs uppercase tracking-widest px-6 py-2 rounded-xl shadow-[0_4px_0_0_#58a700] hover:bg-[#84d823] active:translate-y-0.5 active:shadow-none transition-all disabled:bg-duo-border disabled:shadow-none disabled:cursor-not-allowed"
+          className="w-[630px] bg-duo-green text-white font-black text-xs uppercase tracking-widest px-6 py-2 rounded-xl shadow-[0_4px_0_0_#58a700] hover:bg-[#84d823] active:translate-y-0.5 active:shadow-none transition-all disabled:bg-duo-border disabled:shadow-none disabled:cursor-not-allowed mx-auto"
         >
           {userQuest.is_claimed ? 'Claimed' : 'Claim Reward'}
         </button>

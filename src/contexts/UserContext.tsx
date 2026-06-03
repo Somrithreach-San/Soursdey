@@ -17,6 +17,7 @@ import {
   removeDiamonds,
   addHearts,
   removeHearts,
+  addXp,
   getUserQuests,
   type Profile,
   type UserQuest, // Import the new type
@@ -49,6 +50,7 @@ interface UserContextType {
   removeUserHearts: (amount: number) => Promise<void>
   claimUserQuestReward: (questId: string) => Promise<void>
   addStreakFreezer: (quantity?: number) => Promise<void>
+  addUserXp: (amount: number) => Promise<void>
   resetPassword: (email: string) => Promise<void>
 }
 
@@ -339,6 +341,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const addUserXp = async (amount: number) => {
+    if (!userId) return
+    try {
+      setError(null)
+      await addXp(userId, amount)
+      await refreshProfile()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add XP')
+      throw err
+    }
+  }
+
   const addUserDiamonds = async (amount: number) => {
     if (!userId) return
     try {
@@ -448,11 +462,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
   addUserHearts,
   removeUserHearts,
   claimUserQuestReward,
-  addStreakFreezer,
-  resetPassword,
+    addStreakFreezer,
+    addUserXp,
+    resetPassword,
   }
 
-  return <UserContext.Provider value={value}>{children}</UserContext.Provider>
+  return (
+    <UserContext.Provider value={value}>
+      {children}
+    </UserContext.Provider>
+  )
 }
 
 export function useUser() {
