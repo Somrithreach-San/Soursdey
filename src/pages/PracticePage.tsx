@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Repeat, Lock } from 'lucide-react'
 import Lottie from 'lottie-react'
 import oxData from '../assets/ox.json'
-import { useUser } from '../contexts'
+import { useUser, useTheme } from '../contexts'
 import { getCompletedLessonsWithChallenges, getUserMistakes, type Challenge, type Lesson } from '../services'
 import { Loader } from '../components/ui/Loader'
 import { cn } from '../lib/utils'
@@ -20,45 +20,59 @@ interface PracticeCardProps {
   disabled?: boolean
 }
 
-const PracticeCard = ({ title, description, icon: Icon, iconColor, badge, onClick, disabled, isLocked }: PracticeCardProps & { isLocked?: boolean }) => (
-  <button 
-    onClick={onClick}
-    disabled={disabled || isLocked}
-    className={cn(
-      "w-full bg-[#1a232e] border-2 border-white/10 rounded-[20px] flex items-stretch overflow-hidden hover:bg-[#252f3d] transition-all group active:translate-y-[2px] relative shadow-[0_4px_0_0_rgba(255,255,255,0.05)] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed",
-      isLocked && "grayscale-[0.5] opacity-70"
-    )}
-  >
-    <div className="flex-1 p-5 md:p-6 text-left flex flex-col justify-center">
-      <div className="flex items-center gap-2 mb-1">
-        <h3 className="font-bold text-lg md:text-xl text-white">{title}</h3>
-        {isLocked && (
-          <div className="bg-duo-green text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase text-white shadow-[0_1px_0_0_#46a302]">
-            PRO
-          </div>
-        )}
+const PracticeCard = ({ title, description, icon: Icon, iconColor, badge, onClick, disabled, isLocked }: PracticeCardProps & { isLocked?: boolean }) => {
+  const { theme } = useTheme()
+  return (
+    <button 
+      onClick={onClick}
+      disabled={disabled || isLocked}
+      className={cn(
+        "w-full rounded-[20px] border-2 flex items-stretch overflow-hidden transition-all group active:translate-y-[2px] relative active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed",
+        theme === 'light' 
+          ? "bg-[#FFFFFF] border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#F7F7F7]" 
+          : "bg-[#1a232e] border-white/10 shadow-[0_4px_0_0_rgba(255,255,255,0.05)] hover:bg-[#252f3d]",
+        isLocked && "grayscale-[0.5] opacity-70"
+      )}
+    >
+      <div className="flex-1 p-5 md:p-6 text-left flex flex-col justify-center">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className={cn(
+            "font-bold text-lg md:text-xl",
+            theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+          )}>{title}</h3>
+          {isLocked && (
+            <div className="bg-duo-green text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase text-white shadow-[0_1px_0_0_#46a302]">
+              PRO
+            </div>
+          )}
+        </div>
+        <p className={cn(
+          "text-sm md:text-base font-bold leading-snug",
+          theme === 'light' ? "text-[#777777]" : "text-duo-gray"
+        )}>{description}</p>
       </div>
-      <p className="text-duo-gray text-sm md:text-base font-bold leading-snug">{description}</p>
-    </div>
 
-    <div className="w-20 md:w-24 flex items-center justify-center pr-5 md:pr-6">
-      <div className={cn(
-        "w-12 h-12 md:w-14 md:h-14 rounded-2xl border-2 border-white/20 flex items-center justify-center shadow-[0_4px_0_0_rgba(255,255,255,0.1)] active:translate-y-[2px] active:shadow-none transition-all relative",
-        iconColor
-      )}>
-        <Icon className="w-6 h-6 md:w-8 md:h-8 text-white" />
-        {badge && (
-          <div className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-duo-orange text-white text-[12px] font-black flex items-center justify-center rounded-full shadow-lg">
-            {badge}
-          </div>
-        )}
+      <div className="w-20 md:w-24 flex items-center justify-center pr-5 md:pr-6">
+        <div className={cn(
+          "w-12 h-12 md:w-14 md:h-14 rounded-2xl border-2 flex items-center justify-center transition-all relative",
+          theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5]" : "border-white/20 shadow-[0_4px_0_0_rgba(255,255,255,0.1)]",
+          iconColor
+        )}>
+          <Icon className="w-6 h-6 md:w-8 md:h-8 text-white" />
+          {badge && (
+            <div className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-duo-orange text-white text-[12px] font-black flex items-center justify-center rounded-full shadow-lg">
+              {badge}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  </button>
-)
+    </button>
+  )
+}
 
 export const PracticePage = ({ onStartLesson }: { onStartLesson?: (lessonData: { lesson: Lesson; challenges: Challenge[] }) => void }) => {
   const { userId, profile } = useUser()
+  const { theme } = useTheme()
   const [isLoading, setIsLoading] = useState(true)
   const [completedLessons, setCompletedLessons] = useState<Array<{ lesson: Lesson; challenges: Challenge[] }> | null>(null)
   const [userMistakes, setUserMistakes] = useState<Array<{ challenge: Challenge; lessonId: string; mistakeCount: number }> | null>(null)
@@ -160,10 +174,16 @@ export const PracticePage = ({ onStartLesson }: { onStartLesson?: (lessonData: {
   const mistakesCount = userMistakes?.length || 0
 
   return (
-    <div className="py-12 px-4 max-w-[640px] mx-auto">
+    <div className={cn(
+      "py-12 px-4 max-w-[640px] mx-auto min-h-screen transition-colors duration-300",
+      theme === 'light' ? "bg-[#FFFFFF]" : "bg-duo-dark"
+    )}>
       {/* Today's Review Section */}
       <section className="mb-12">
-        <h2 className="text-xl font-black text-white mb-5 tracking-tight uppercase">Today's Review</h2>
+        <h2 className={cn(
+          "text-xl font-black mb-5 tracking-tight uppercase",
+          theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+        )}>Today's Review</h2>
         {isLoading ? (
           <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-duo-green to-duo-dark-green p-8 min-h-[200px] flex items-center justify-center">
             <Loader />
@@ -202,7 +222,10 @@ export const PracticePage = ({ onStartLesson }: { onStartLesson?: (lessonData: {
 
       {/* Your Collections Section */}
       <section className="mb-12">
-        <h2 className="text-xl font-black text-white mb-5 tracking-tight uppercase">Correct your mistakes</h2>
+        <h2 className={cn(
+          "text-xl font-black mb-5 tracking-tight uppercase",
+          theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+        )}>Correct your mistakes</h2>
         <div className="space-y-4">
           <PracticeCard 
             title="Mistakes"

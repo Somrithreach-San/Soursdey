@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useUser } from '../contexts'
+import { useUser, useTheme } from '../contexts'
 import { cn } from '../lib/utils'
 import { getLeaderboardProfiles, type Profile } from '../services'
 import { Loader } from '../components/ui/Loader'
@@ -31,6 +31,7 @@ const getAvatar = (avatarUrl: string | undefined) => {
 
 const LeaderboardPage = () => {
   const { profile } = useUser()
+  const { theme } = useTheme()
   const [leaderboardData, setLeaderboardData] = useState<Profile[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -98,25 +99,31 @@ const LeaderboardPage = () => {
           </div>
         )
       default:
-        return <span className="text-[#4b4b4b] font-black text-base w-10 text-center">{rank}</span>
+        return <span className={cn("font-black text-base w-10 text-center", theme === 'light' ? "text-[#4b4b4b]" : "text-[#afafaf]")}>{rank}</span>
     }
   }
 
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)] lg:h-screen">
       {/* Fixed Header */}
-      <div className="sticky top-0 z-20 bg-duo-dark pt-8 pb-6 px-4 flex flex-col items-center border-b-2 border-[#37464f]">
-        <h1 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Leaderboard</h1>
+      <div className={cn(
+        "sticky top-0 z-20 pt-8 pb-6 px-4 flex flex-col items-center border-b-2 bg-duo-dark",
+        theme === 'light' ? "border-[#E5E5E5]" : "border-[#37464f]"
+      )}>
+        <h1 className={cn(
+          "text-3xl font-black uppercase tracking-tight mb-4",
+          theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+        )}>Leaderboard</h1>
         
         <div className="flex items-center justify-center gap-2 flex-wrap px-4 mb-2">
-          <p className="text-[#afafaf] font-bold text-base text-center">
-            Top <span className="text-white font-black text-[22px]">3</span> learners will receive
+          <p className={cn("font-bold text-base text-center", theme === 'light' ? "text-[#777777]" : "text-[#afafaf]")}>
+            Top <span className={cn("font-black text-[22px]", theme === 'light' ? "text-[#4b4b4b]" : "text-white")}>3</span> learners will receive
           </p>
           <div className="flex items-center gap-1.5">
             <img src={diamondIcon} alt="Diamond" className="w-5 h-5 object-contain" />
             <span className="text-duo-blue font-black text-xl">1,000</span>
           </div>
-          <p className="text-[#afafaf] font-bold text-base text-center">
+          <p className={cn("font-bold text-base text-center", theme === 'light' ? "text-[#777777]" : "text-[#afafaf]")}>
             each by the end of the week
           </p>
         </div>
@@ -133,7 +140,7 @@ const LeaderboardPage = () => {
         <div className="w-full max-w-xl mx-auto pt-2">
           {isLoading ? (
             <div className="flex justify-center items-center py-10">
-              <Loader className="w-8 h-8 text-white" />
+              <Loader className={cn("w-8 h-8", theme === 'light' ? "text-[#4b4b4b]" : "text-white")} />
             </div>
           ) : (
             <div className="space-y-2">
@@ -143,8 +150,8 @@ const LeaderboardPage = () => {
                   className={cn(
                     "flex items-center gap-4 p-3 rounded-2xl transition-colors",
                     profile?.id === user.id 
-                      ? "bg-white/5" 
-                      : "hover:bg-white/5"
+                      ? (theme === 'light' ? "bg-[#E5E5E5]/50" : "bg-white/5")
+                      : (theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5")
                   )}
                 >
                   {/* Rank */}
@@ -154,7 +161,10 @@ const LeaderboardPage = () => {
 
                   {/* Avatar */}
                   <div className="flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-duo-border">
+                    <div className={cn(
+                      "w-12 h-12 rounded-full overflow-hidden border-2",
+                      theme === 'light' ? "border-[#E5E5E5]" : "border-duo-border"
+                    )}>
                       <img 
                         src={getAvatar(user.avatar_url)} 
                         alt={user.username}
@@ -167,15 +177,24 @@ const LeaderboardPage = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex flex-col">
-                        <span className="text-white font-bold truncate">
+                        <span className={cn(
+                          "font-bold truncate",
+                          theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+                        )}>
                           {user.username}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[#afafaf] font-black whitespace-nowrap">
+                        <span className={cn(
+                          "font-black whitespace-nowrap",
+                          theme === 'light' ? "text-[#777777]" : "text-[#afafaf]"
+                        )}>
                           {user.xp || 0}
                         </span>
-                        <span className="text-[#afafaf] font-bold text-sm uppercase">XP</span>
+                        <span className={cn(
+                          "font-bold text-sm uppercase",
+                          theme === 'light' ? "text-[#777777]" : "text-[#afafaf]"
+                        )}>XP</span>
                       </div>
                     </div>
                   </div>

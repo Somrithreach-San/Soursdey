@@ -1,21 +1,29 @@
 import { useCountdown } from '../hooks/useCountdown'; // Import the new hook
-import { useUser } from '../contexts/UserContext'
+import { useUser, useTheme } from '../contexts'
 import { Clock } from 'lucide-react'
+import { cn } from '../lib/utils'
 import type { UserQuest } from '../services' // Import the UserQuest type
 import { getQuestIcon } from '../lib/getQuestIcon' // Import the centralized function
 import diamondIcon from '../assets/diamond.png' // Import the diamond icon
 
 const QuestCard = ({ userQuest, onClaim }: { userQuest: UserQuest, onClaim: (id: string) => void }) => {
   const { quests: quest } = userQuest; // The actual quest details are nested
+  const { theme } = useTheme()
   const progressPercentage = Math.min((userQuest.progress / quest.target) * 100, 100)
   const isCompleted = userQuest.is_completed;
 
   return (
-    <div className="w-full bg-[#1a232e] border-2 border-white/10 rounded-[20px] p-4 flex flex-col gap-3">
+    <div className={cn(
+      "w-full border-2 rounded-[20px] p-4 flex flex-col gap-3",
+      theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-[#1a232e] border-white/10"
+    )}>
       <div className="flex items-center gap-3">
         <img src={getQuestIcon(quest.icon)} alt={quest.title} className="w-[33px] h-[33px] object-contain" />
         <div className="flex-1">
-          <h3 className="font-bold text-lg text-white mb-1">{quest.title}</h3>
+          <h3 className={cn(
+            "font-bold text-lg mb-1",
+            theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+          )}>{quest.title}</h3>
           <p className="text-duo-gray text-sm font-bold">{quest.description}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -25,7 +33,10 @@ const QuestCard = ({ userQuest, onClaim }: { userQuest: UserQuest, onClaim: (id:
       </div>
       
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-3 bg-duo-border rounded-full overflow-hidden">
+        <div className={cn(
+          "flex-1 h-3 rounded-full overflow-hidden",
+          theme === 'light' ? "bg-[#E5E5E5]" : "bg-duo-border"
+        )}>
           <div 
             className="h-full bg-duo-green rounded-full transition-all duration-500"
             style={{ width: `${progressPercentage}%` }}
@@ -50,6 +61,7 @@ const QuestCard = ({ userQuest, onClaim }: { userQuest: UserQuest, onClaim: (id:
 
 export default function QuestsPage() {
   const { quests, claimUserQuestReward } = useUser()
+  const { theme } = useTheme()
 
   const getMidnight = () => {
     const now = new Date();
@@ -65,7 +77,10 @@ export default function QuestsPage() {
     <div className="py-12 px-4 max-w-160 mx-auto">
       <section className="mb-12">
         <div className="flex justify-between items-center mb-5">
-          <h2 className="text-xl font-black text-white tracking-tight uppercase">Daily Quests</h2>
+          <h2 className={cn(
+            "text-xl font-black tracking-tight uppercase",
+            theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+          )}>Daily Quests</h2>
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-duo-gray" />
             <span className="text-sm font-bold text-duo-gray uppercase">{timeRemaining}</span>

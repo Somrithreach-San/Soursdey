@@ -5,7 +5,7 @@ import { Infinity as InfinityIcon } from 'lucide-react'
 import diamond from '../../assets/diamond.png'
 import hearts from '../../assets/hearts.png'
 import streak from '../../assets/streak.png'
-import { useUser } from '../../contexts'
+import { useUser, useTheme } from '../../contexts'
 import { MAX_HEARTS } from '../../lib/hearts'
 import subscription from '../../assets/subscription.png'
 import { getQuestIcon } from '../../lib/getQuestIcon' // Import the centralized function
@@ -13,6 +13,7 @@ import { cn, getDaysRemaining } from '../../lib/utils'
 
 export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQuests }: { userProfile: any, onStoreClick?: () => void, onQuestsClick?: () => void, hideQuests?: boolean }) => {
   const { quests } = useUser()
+  const { theme } = useTheme()
   const daysRemaining = getDaysRemaining(userProfile?.subscription_end_at)
 
   return (
@@ -35,10 +36,10 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
           <img src={hearts} alt="Hearts" className="w-6 h-6 shrink-0 object-contain" />
           <span className={cn(
             "font-bold text-base",
-            userProfile?.is_subscribed ? "text-duo-blue" : "text-duo-red"
+            userProfile?.is_subscribed ? "text-duo-blue" : (theme === 'light' ? "text-[#FF4B4B]" : "text-duo-red")
           )}>
             {userProfile?.is_subscribed ? (
-              <InfinityIcon className="w-5 h-5" />
+              <InfinityIcon className="w-5 h-5" strokeWidth={3} />
             ) : (
               `${userProfile?.hearts ?? 5}/${MAX_HEARTS}`
             )}
@@ -48,7 +49,10 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
 
       {/* Pro Card */}
       {!userProfile?.is_subscribed ? (
-        <div className="bg-duo-dark border-[0.5px] border-duo-border rounded-xl p-5 mb-6">
+        <div className={cn(
+          "border-[0.5px] rounded-xl p-5 mb-6",
+          theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+        )}>
           <div className="flex justify-between items-start mb-3">
             <div className="bg-duo-green text-xs font-black px-2 py-1 rounded-md uppercase text-white shadow-[0_2px_0_0_#46a302]">
               PRO
@@ -57,7 +61,10 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
                <img src={subscription} alt="Pro" className="w-8 h-8 object-contain" />
             </div>
           </div>
-          <h3 className="font-bold text-lg mb-1.5 text-white">Try Pro for free</h3>
+          <h3 className={cn(
+            "font-bold text-lg mb-1.5",
+            theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+          )}>Try Pro for free</h3>
           <p className="text-duo-gray text-sm leading-snug mb-4">
             No ads, personalized practice, and unlimited Legendary!
           </p>
@@ -71,7 +78,10 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
           </Button>
         </div>
       ) : (
-        <div className="bg-duo-dark border-[0.5px] border-duo-border rounded-xl p-5 mb-6">
+        <div className={cn(
+          "border-[0.5px] rounded-xl p-5 mb-6",
+          theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+        )}>
           <div className="flex justify-between items-start mb-3">
             <div className="bg-duo-green text-xs font-black px-2 py-1 rounded-md uppercase text-white shadow-[0_2px_0_0_#46a302]">
               PRO
@@ -80,7 +90,10 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
                <img src={subscription} alt="Pro" className="w-8 h-8 object-contain" />
             </div>
           </div>
-          <h3 className="font-bold text-lg mb-1.5 text-white tracking-tight">
+          <h3 className={cn(
+            "font-bold text-lg mb-1.5 tracking-tight",
+            theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+          )}>
             {userProfile?.subscription_status === 'trialing' ? 'Soursdey Pro Trial' : 'Soursdey Pro Active'}
           </h3>
           <p className="text-duo-gray text-sm leading-snug mb-4">
@@ -91,7 +104,12 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
           <Button 
             variant="ghost" 
             fullWidth 
-            className="py-2.5 text-xs bg-duo-gray/20 text-white border-none shadow-[0_3px_0_0_#37464f] hover:bg-duo-gray/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={cn(
+              "py-2.5 text-xs border-none disabled:opacity-50 disabled:cursor-not-allowed",
+              theme === 'light'
+                ? "bg-[#E5E5E5] text-[#afafaf] shadow-[0_3px_0_0_#afafaf]"
+                : "bg-duo-gray/20 text-white shadow-[0_3px_0_0_#37464f] enabled:hover:bg-duo-gray/30"
+            )}
             onClick={onStoreClick}
             disabled={true}
           >
@@ -102,9 +120,15 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
 
       {/* Daily Quests Card - Now displays all quests */}
       {!hideQuests && quests && quests.length > 0 && (
-        <div className="bg-duo-dark border-[0.5px] border-duo-border rounded-xl p-5">
+        <div className={cn(
+          "border-[0.5px] rounded-xl p-5",
+          theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+        )}>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-base text-white uppercase tracking-wider">Daily Quests</h3>
+            <h3 className={cn(
+              "font-bold text-base uppercase tracking-wider",
+              theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+            )}>Daily Quests</h3>
             <button 
               onClick={onQuestsClick}
               className="text-[11px] font-black text-duo-green uppercase tracking-widest"
@@ -120,8 +144,14 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
                 <div key={quest.id} className="flex items-start gap-3">
                   <img src={getQuestIcon(quest.quests.icon)} alt={quest.quests.title} className="w-7 h-7 object-contain" />
                   <div className="flex-1">
-                    <h4 className="font-bold text-sm text-white mb-1.5">{quest.quests.title}</h4>
-                    <div className="h-3 bg-duo-border rounded-full overflow-hidden">
+                    <h4 className={cn(
+                      "font-bold text-sm mb-1.5",
+                      theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+                    )}>{quest.quests.title}</h4>
+                    <div className={cn(
+                      "h-3 rounded-full overflow-hidden",
+                      theme === 'light' ? "bg-[#E5E5E5]" : "bg-duo-border"
+                    )}>
                       <div 
                         className="h-full bg-duo-green rounded-full relative transition-all duration-300"
                         style={{ width: `${progressPercentage}%` }}
@@ -140,15 +170,15 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
       {/* Footer */}
       <div className="mt-8 flex flex-col items-center gap-3 text-xs font-bold text-duo-gray uppercase tracking-wider opacity-60">
         <div className="flex flex-wrap justify-center gap-x-4">
-          <a href="#" className="hover:text-white transition-colors">About</a>
-          <a href="#" className="hover:text-white transition-colors">Blog</a>
-          <a href="#" className="hover:text-white transition-colors">Store</a>
-          <a href="#" className="hover:text-white transition-colors">Efficacy</a>
+          <a href="#" className={cn("transition-colors", theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white")}>About</a>
+          <a href="#" className={cn("transition-colors", theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white")}>Blog</a>
+          <a href="#" className={cn("transition-colors", theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white")}>Store</a>
+          <a href="#" className={cn("transition-colors", theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white")}>Efficacy</a>
         </div>
         <div className="flex flex-wrap justify-center gap-x-4">
-          <a href="#" className="hover:text-white transition-colors">Investors</a>
-          <a href="#" className="hover:text-white transition-colors">Terms</a>
-          <a href="#" className="hover:text-white transition-colors">Privacy</a>
+          <a href="#" className={cn("transition-colors", theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white")}>Investors</a>
+          <a href="#" className={cn("transition-colors", theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white")}>Terms</a>
+          <a href="#" className={cn("transition-colors", theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white")}>Privacy</a>
         </div>
       </div>
     </div>

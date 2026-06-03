@@ -5,6 +5,7 @@ import exerciseIcon from '../../assets/excercise.png'
 import leaderboardIcon from '../../assets/leaderboard.png'
 import storeIcon from '../../assets/store.png'
 import questIcon from '../../assets/Quest.png' // Import the correct quest icon
+import gearIcon from '../../assets/gear_icon.png'
 
 // Import all possible avatars
 import jason from '../../assets/Jason.png'
@@ -39,17 +40,19 @@ export const Sidebar = ({
   onPracticeClick,
   onProfileClick,
   onQuestsClick,
-  onLeaderboardClick
+  onLeaderboardClick,
+  onSettingsClick
 }: { 
   userProfile: any,
-  currentView?: 'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'quests' | 'leaderboard',
+  currentView?: 'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'quests' | 'leaderboard' | 'settings',
   onStoreClick?: () => void,
   onLearnClick?: () => void,
   onLettersClick?: () => void,
   onPracticeClick?: () => void,
   onProfileClick?: () => void,
   onQuestsClick?: () => void,
-  onLeaderboardClick?: () => void
+  onLeaderboardClick?: () => void,
+  onSettingsClick?: () => void
 }) => {
   const menuItems = [
     { icon: homeIcon, label: 'Learn', view: 'learn' },
@@ -59,13 +62,14 @@ export const Sidebar = ({
     { icon: questIcon, label: 'Quests', view: 'quests' }, // Use the correct quest icon
     { icon: storeIcon, label: 'Store', view: 'shop' },
     { icon: getAvatar(userProfile?.avatar_url), label: 'Profile', view: 'profile' },
+    { icon: gearIcon, label: 'Settings', view: 'settings' },
   ]
 
   return (
     <>
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex w-72 h-screen border-r-2 border-duo-border flex-col pt-8 px-4 pb-4 fixed left-0 top-0 bg-duo-dark z-50">
-        <div className="px-4 mb-10 flex items-center justify-center">
+        <div className="px-4 mb-10 flex items-center justify-center relative">
           <h1 className="text-4xl font-black text-duo-green tracking-tighter">Soursdey</h1>
         </div>
 
@@ -87,6 +91,7 @@ export const Sidebar = ({
                   if (view === 'quests') onQuestsClick?.()
                   if (view === 'shop') onStoreClick?.()
                   if (view === 'profile') onProfileClick?.()
+                  if (view === 'settings') onSettingsClick?.()
                 }}
                 className={cn(
                   "sidebar-item group",
@@ -129,6 +134,7 @@ export const Sidebar = ({
                 if (view === 'quests') onQuestsClick?.()
                 if (view === 'shop') onStoreClick?.()
                 if (view === 'profile') onProfileClick?.()
+                if (view === 'settings') onSettingsClick?.()
               }}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all relative",
@@ -136,7 +142,7 @@ export const Sidebar = ({
               )}
             >
               <div className={cn(
-                "p-1.5 rounded-xl transition-all",
+                "p-1.5 rounded-xl transition-all relative",
                 isActive && "bg-duo-green/10"
               )}>
                 <img 
@@ -147,15 +153,15 @@ export const Sidebar = ({
                     isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"
                   )}
                 />
-              </div>
-              <div className="flex flex-col items-center">
-                {isActive && (
-                  <div className="absolute -top-[2px] left-1/2 -translate-x-1/2 w-8 h-1 bg-duo-green rounded-full shadow-[0_0_8px_rgba(88,204,2,0.5)]" />
-                )}
                 {label === 'Profile' && userProfile?.is_subscribed && (
                   <div className="absolute -top-1 -right-1 bg-duo-green text-[8px] font-black px-1 py-0.5 rounded-md uppercase text-white shadow-[0_1px_0_0_#46a302] z-10">
                     PRO
                   </div>
+                )}
+              </div>
+              <div className="flex flex-col items-center">
+                {isActive && (
+                  <div className="absolute -top-[2px] left-1/2 -translate-x-1/2 w-8 h-1 bg-duo-green rounded-full shadow-[0_0_8px_rgba(88,204,2,0.5)]" />
                 )}
               </div>
             </button>

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
+import { cn } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import { Loader } from '../components/ui/Loader'
+import { useTheme } from '../contexts'
 
 interface Letter {
   id: string
@@ -17,6 +19,7 @@ interface LetterCardProps {
 }
 
 const LetterCard = ({ char, audioSrc, onClick }: LetterCardProps) => {
+  const { theme } = useTheme()
   const handleClick = () => {
     if (onClick && audioSrc) {
       onClick(audioSrc)
@@ -26,14 +29,23 @@ const LetterCard = ({ char, audioSrc, onClick }: LetterCardProps) => {
   return (
     <button 
       onClick={handleClick}
-      className="w-full aspect-square rounded-xl border-2 border-white/10 bg-[#1a232e] hover:bg-[#252f3d] transition-all flex items-center justify-center group relative active:translate-y-0.5 shadow-[0_3px_0_0_rgba(255,255,255,0.05)] active:shadow-none"
+      className={cn(
+        "w-full aspect-square rounded-2xl border-2 transition-all flex items-center justify-center group relative active:translate-y-1",
+        theme === 'light' 
+          ? "bg-[#FFFFFF] border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#F7F7F7]" 
+          : "bg-[#1a232e] border-white/10 shadow-[0_4px_0_0_rgba(255,255,255,0.05)] hover:bg-[#252f3d]"
+      )}
     >
-      <span className="text-2xl font-black text-white font-khmer">{char}</span>
+      <span className={cn(
+        "text-3xl font-black font-khmer",
+        theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+      )}>{char}</span>
     </button>
   )
 }
 
 export const LettersPage = () => {
+  const { theme } = useTheme()
   const [letters, setLetters] = useState<Letter[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -93,17 +105,26 @@ export const LettersPage = () => {
   }
 
   return (
-    <div className="py-12 px-4 max-w-160 mx-auto space-y-16">
+    <div className={cn(
+      "py-12 px-4 max-w-2xl mx-auto space-y-16 min-h-screen transition-colors duration-300",
+      theme === 'light' ? "bg-[#FFFFFF]" : "bg-duo-dark"
+    )}>
       {/* Khmer Alphabet Section */}
       <section>
-        <div className="mb-8 px-1">
-          <h2 className="text-2xl font-black text-white mb-2 tracking-tight uppercase">Khmer Alphabet</h2>
-          <p className="text-[#9ca3af] font-bold text-lg leading-snug">
+        <div className="mb-10 px-1">
+          <h2 className={cn(
+            "text-2xl font-black mb-2 tracking-tight uppercase",
+            theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+          )}>Khmer Alphabet</h2>
+          <p className={cn(
+            "font-bold text-lg leading-snug",
+            theme === 'light' ? "text-[#777777]" : "text-duo-gray"
+          )}>
             The sounds that form the foundation of the Khmer language
           </p>
         </div>
 
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-4 md:grid-cols-5 gap-4">
           {consonants.map((item) => (
             <LetterCard 
               key={item.id} 
@@ -116,15 +137,24 @@ export const LettersPage = () => {
       </section>
 
       {/* Khmer Vowels Section */}
-      <section className="border-t-2 border-duo-border pt-12">
-        <div className="mb-8 px-1">
-          <h2 className="text-2xl font-black text-white mb-2 tracking-tight uppercase">Khmer Vowels</h2>
-          <p className="text-[#9ca3af] font-bold text-lg leading-snug">
+      <section className={cn(
+        "border-t-2 pt-12",
+        theme === 'light' ? "border-[#E5E5E5]" : "border-duo-border"
+      )}>
+        <div className="mb-10 px-1">
+          <h2 className={cn(
+            "text-2xl font-black mb-2 tracking-tight uppercase",
+            theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+          )}>Khmer Vowels</h2>
+          <p className={cn(
+            "font-bold text-lg leading-snug",
+            theme === 'light' ? "text-[#777777]" : "text-duo-gray"
+          )}>
             Dependent vowels that modify the consonants
           </p>
         </div>
 
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-4 md:grid-cols-5 gap-4">
           {vowels.map((item) => (
             <LetterCard 
               key={item.id} 
@@ -137,10 +167,19 @@ export const LettersPage = () => {
       </section>
 
       {/* Khmer Numbers Section */}
-      <section className="border-t-2 border-duo-border pt-12">
-        <div className="mb-8 px-1">
-          <h2 className="text-2xl font-black text-white mb-2 tracking-tight uppercase">Khmer Numbers</h2>
-          <p className="text-[#9ca3af] font-bold text-lg leading-snug">
+      <section className={cn(
+        "border-t-2 pt-12",
+        theme === 'light' ? "border-[#E5E5E5]" : "border-duo-border"
+      )}>
+        <div className="mb-10 px-1">
+          <h2 className={cn(
+            "text-2xl font-black mb-2 tracking-tight uppercase",
+            theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+          )}>Khmer Numbers</h2>
+          <p className={cn(
+            "font-bold text-lg leading-snug",
+            theme === 'light' ? "text-[#777777]" : "text-duo-gray"
+          )}>
             Traditional numerals used in Cambodia
           </p>
         </div>

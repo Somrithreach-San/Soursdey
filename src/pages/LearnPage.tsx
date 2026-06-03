@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import { Check, Star, Languages, Trophy } from 'lucide-react'
 import { useLottie } from 'lottie-react'
 import { cn } from '../lib/utils'
-import { useUser, useLesson } from '../contexts'
+import { useUser, useLesson, useTheme } from '../contexts'
 import { type Lesson } from '../services'
 import { Loader } from '../components/ui/Loader'
 import characterAnimation1 from '../assets/peacock.json'
@@ -17,7 +17,7 @@ const defaultColorSchemes: { [key: string]: { color: string; darkColor: string; 
 }
 
 const UnitDivider = ({ title }: { title: string }) => (
-  <div className="w-full flex items-center gap-6 my-12">
+  <div className="w-full flex items-center gap-6 my-8 md:my-10">
     <div className="flex-1 h-0.5 bg-duo-border"></div>
     <span className="text-duo-gray font-bold uppercase tracking-[0.2em] text-sm whitespace-nowrap">
       {title}
@@ -46,6 +46,7 @@ const CharacterAnimation = ({ animationData, speed = 0.5 }: { animationData: unk
 }
 
 export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string) => void }) => {
+  const { theme } = useTheme()
   const { 
     units, 
     lessons, 
@@ -207,7 +208,10 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
   return (
     <div className="flex-1 min-h-screen flex flex-col items-center pb-32 lg:pb-24">
       {/* Sticky Unit Header */}
-      <div className="sticky top-0 z-50 w-full bg-duo-dark px-4 pt-6 md:pt-8 pb-3 md:pb-4">
+      <div className={cn(
+        "sticky top-0 z-50 w-full px-4 pt-4 md:pt-6 pb-2 md:pb-3 border-b-2 lg:border-none transition-colors",
+        theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+      )}>
         <div 
           className="rounded-2xl p-3 md:p-4 flex items-center justify-between shadow-lg relative overflow-hidden"
           style={{ 
@@ -247,7 +251,7 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
             {/* Path Container */}
             <div className={cn(
               "flex flex-col items-center gap-16 pb-12",
-              unitIdx === 0 ? "pt-32" : "pt-0"
+              unitIdx === 0 ? "pt-24 md:pt-28" : "pt-0"
             )}>
               {[0, 1, 2, 3, 4].map((index) => {
                 const lesson = unitLessons[index]
@@ -271,11 +275,17 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
                     style={index === 1 ? { transform: 'translateX(-45px)' } : index === 3 ? { transform: 'translateX(45px)' } : undefined}
                   >
                     {isCurrent && (
-                      <div className="absolute -top-16 z-20 bg-duo-dark border-2 border-duo-border font-black text-sm px-6 py-3 rounded-xl animate-bounce uppercase tracking-widest whitespace-nowrap shadow-lg"
+                      <div className={cn(
+                        "absolute -top-16 z-20 border-2 font-black text-sm px-6 py-3 rounded-xl animate-bounce uppercase tracking-widest whitespace-nowrap shadow-lg",
+                        theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+                      )}
                         style={{ color: unitWithColors.color }}
                       >
                         {"START"}
-                      <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-4 bg-duo-dark border-r-2 border-b-2 border-duo-border rotate-45 z-[-1]" />
+                      <div className={cn(
+                        "absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-4 border-r-2 border-b-2 rotate-45 z-[-1]",
+                        theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+                      )} />
                       </div>
                     )}
                     
@@ -300,7 +310,7 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
                       {/* Shadow/Bottom layer */}
                       <div 
                         className="absolute top-2.5 left-0 w-16 h-14 rounded-[100%]"
-                        style={{ backgroundColor: isLocked ? '#444' : unitWithColors.darkColor }}
+                        style={{ backgroundColor: isLocked ? (theme === 'light' ? '#B7B7B7' : '#444') : unitWithColors.darkColor }}
                       />
                       
                       {/* Button Face */}
@@ -322,8 +332,8 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
                           isLocked && "grayscale opacity-50 cursor-not-allowed"
                         )}
                         style={{ 
-                          backgroundColor: isLocked ? '#888' : unitWithColors.color,
-                          boxShadow: `0 4px 0 0 ${isLocked ? '#444' : unitWithColors.darkColor}`
+                          backgroundColor: isLocked ? (theme === 'light' ? '#E5E5E5' : '#888') : unitWithColors.color,
+                          boxShadow: `0 4px 0 0 ${isLocked ? (theme === 'light' ? '#B7B7B7' : '#444') : unitWithColors.darkColor}`
                         }}
                       >
                         {lesson && completedLessons[lesson.id] ? <Check className="w-7 h-7" /> :
@@ -348,7 +358,7 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
       })}
 
       {/* Coming Soon Section */}
-      <div className="my-16 text-center">
+      <div className="my-10 md:my-12 text-center">
         <h3 className="text-lg font-bold uppercase tracking-wider text-duo-gray opacity-50">
           Coming Soon!
         </h3>

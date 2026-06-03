@@ -1,6 +1,7 @@
 import { useState, type FC } from 'react'
 import { Clock, Pencil, AlertTriangle, ChevronLeft, ChevronRight, LogOut } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { useTheme } from '../contexts'
 import { supabase } from '../lib/supabase'
 import streakAsset from '../assets/streak.png'
 import streakOutlineAsset from '../assets/streak_outline.png'
@@ -32,6 +33,7 @@ const getAvatar = (avatarUrl: string) => {
 };
 
 const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'completed' | 'warning' | 'inactive' | 'future' | 'empty', isCurrent?: boolean }) => {
+  const { theme } = useTheme()
   if (status === 'empty') return <div className="w-11 h-11" />
 
   return (
@@ -40,9 +42,21 @@ const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'comple
         "w-11 h-11 rounded-xl flex items-center justify-center transition-all relative z-10 border-2",
         status === 'completed' && "bg-duo-green border-white/20 text-white shadow-[0_3px_0_0_#1a7f0e]",
         status === 'warning' && "bg-yellow-400 border-black/10 text-black shadow-[0_3px_0_0_rgba(0,0,0,0.3)]",
-        status === 'inactive' && "bg-[#1a232e] border-white/5 text-duo-gray opacity-30",
-        status === 'future' && "bg-[#1a232e] border-white/5 text-duo-gray opacity-20",
-        isCurrent && "border-white ring-2 ring-white/10"
+        status === 'inactive' && (
+          theme === 'light' 
+            ? "bg-[#F7F7F7] border-[#E5E5E5] text-[#4b4b4b] opacity-50" 
+            : "bg-[#1a232e] border-white/5 text-duo-gray opacity-30"
+        ),
+        status === 'future' && (
+          theme === 'light'
+            ? "bg-[#F7F7F7] border-[#E5E5E5] text-[#4b4b4b] opacity-20"
+            : "bg-[#1a232e] border-white/5 text-duo-gray opacity-20"
+        ),
+        isCurrent && (
+          theme === 'light'
+            ? "border-[#4b4b4b] ring-2 ring-[#4b4b4b]/10"
+            : "border-white ring-2 ring-white/10"
+        )
       )}>
         {status === 'completed' ? (
           <img src={streakOutlineAsset} alt="Streak" className="w-5 h-5" />
@@ -57,35 +71,51 @@ const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'comple
 }
 
 const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext, currentMonthIndex }: { month: string, year: number, days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future', isCurrent: boolean }[], startDay: number, onPrev: () => void, onNext: () => void, currentMonthIndex: number }) => {
+  const { theme } = useTheme()
   const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
   const emptyDays = Array(startDay).fill(null)
 
   return (
-    <div className="bg-[#1a232e] border-2 border-white/10 rounded-[20px] overflow-hidden mb-8 shadow-[0_6px_0_0_rgba(255,255,255,0.03)]">
-      <div className="bg-white/5 py-5 px-6 border-b-2 border-white/5 flex items-center justify-between">
+    <div className={cn(
+      "border-2 rounded-[20px] overflow-hidden mb-8",
+      theme === 'light' 
+        ? "bg-white border-[#E5E5E5] shadow-[0_6px_0_0_#E5E5E5]" 
+        : "bg-[#1a232e] border-white/10 shadow-[0_6px_0_0_rgba(255,255,255,0.03)]"
+    )}>
+      <div className={cn(
+        "py-5 px-6 border-b-2 flex items-center justify-between",
+        theme === 'light' ? "bg-[#F7F7F7] border-[#E5E5E5]" : "bg-white/5 border-white/5"
+      )}>
         <button 
           onClick={onPrev}
           disabled={currentMonthIndex === 0}
           className={cn(
-            "w-10 h-10 border-2 rounded-xl flex items-center justify-center transition-all shadow-[0_3px_0_0_rgba(255,255,255,0.05)]",
+            "w-10 h-10 border-2 rounded-xl flex items-center justify-center transition-all",
             currentMonthIndex === 0 
-              ? "bg-[#1a232e]/50 border-white/5 text-white/30 cursor-not-allowed shadow-none" 
-              : "bg-[#1a232e] border-white/10 text-white hover:bg-[#252f3d] active:translate-y-0.5 active:shadow-none"
+              ? (theme === 'light' ? "bg-[#E5E5E5]/50 border-[#E5E5E5] text-[#afafaf] cursor-not-allowed shadow-none" : "bg-[#1a232e]/50 border-white/5 text-white/30 cursor-not-allowed shadow-none")
+              : (theme === 'light' 
+                  ? "bg-white border-[#E5E5E5] text-[#4b4b4b] shadow-[0_3px_0_0_#E5E5E5] hover:bg-[#F7F7F7] active:translate-y-0.5 active:shadow-none"
+                  : "bg-[#1a232e] border-white/10 text-white shadow-[0_3px_0_0_rgba(255,255,255,0.05)] hover:bg-[#252f3d] active:translate-y-0.5 active:shadow-none")
           )}
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
 
-        <h3 className="font-black text-white tracking-tight uppercase text-lg text-center flex-1">{month} {year}</h3>
+        <h3 className={cn(
+          "font-black tracking-tight uppercase text-lg text-center flex-1",
+          theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+        )}>{month} {year}</h3>
 
         <button 
           onClick={onNext}
           disabled={currentMonthIndex === 2}
           className={cn(
-            "w-10 h-10 border-2 rounded-xl flex items-center justify-center transition-all shadow-[0_3px_0_0_rgba(255,255,255,0.05)]",
+            "w-10 h-10 border-2 rounded-xl flex items-center justify-center transition-all",
             currentMonthIndex === 2 
-              ? "bg-[#1a232e]/50 border-white/5 text-white/30 cursor-not-allowed shadow-none" 
-              : "bg-[#1a232e] border-white/10 text-white hover:bg-[#252f3d] active:translate-y-0.5 active:shadow-none"
+              ? (theme === 'light' ? "bg-[#E5E5E5]/50 border-[#E5E5E5] text-[#afafaf] cursor-not-allowed shadow-none" : "bg-[#1a232e]/50 border-white/5 text-white/30 cursor-not-allowed shadow-none")
+              : (theme === 'light' 
+                  ? "bg-white border-[#E5E5E5] text-[#4b4b4b] shadow-[0_3px_0_0_#E5E5E5] hover:bg-[#F7F7F7] active:translate-y-0.5 active:shadow-none"
+                  : "bg-[#1a232e] border-white/10 text-white shadow-[0_3px_0_0_rgba(255,255,255,0.05)] hover:bg-[#252f3d] active:translate-y-0.5 active:shadow-none")
           )}
         >
           <ChevronRight className="w-6 h-6" />
@@ -120,6 +150,7 @@ interface ProfilePageProps {
 }
 
 export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateUsername, onUpdateAvatar }) => {
+  const { theme } = useTheme()
   const [currentMonthIndex, setCurrentMonthIndex] = useState(1) // 0 = previous month, 1 = current month, 2 = next month
   const [logoutLoading, setLogoutLoading] = useState(false)
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
@@ -224,21 +255,30 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
   return (
     <div className="py-12 px-4 max-w-160 mx-auto">
       {/* Profile Header */}
-      <section className="mb-10 pb-10 border-b-2 border-duo-border relative">
+      <section className={cn(
+        "mb-10 pb-10 border-b-2 relative",
+        theme === 'light' ? "border-[#E5E5E5]" : "border-duo-border"
+      )}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             {userProfile ? (
               <>
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <h1 className="text-3xl font-black text-white">{userProfile.username}</h1>
+                    <h1 className={cn(
+                      "text-3xl font-black",
+                      theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+                    )}>{userProfile.username}</h1>
                     {userProfile?.is_subscribed && (
                       <div className="bg-duo-green text-xs font-black px-2 py-1 rounded-md uppercase text-white shadow-[0_2px_0_0_#46a302]">
                         PRO
                       </div>
                     )}
                   </div>
-                  <button onClick={() => setIsUsernameModalOpen(true)} className="p-1 rounded-full hover:bg-white/10 transition-colors">
+                  <button onClick={() => setIsUsernameModalOpen(true)} className={cn(
+                    "p-1 rounded-full transition-colors",
+                    theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/10"
+                  )}>
                     <Pencil className="w-5 h-5 text-duo-gray" />
                   </button>
                 </div>
@@ -256,7 +296,10 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
           </div>
           
           <div className="relative">
-            <div className="w-32 h-32 rounded-3xl bg-[#1a232e] border-2 border-white/10 flex items-center justify-center overflow-hidden shadow-[0_8px_0_0_rgba(0,0,0,0.2)]">
+            <div className={cn(
+              "w-32 h-32 rounded-3xl border-2 flex items-center justify-center overflow-hidden shadow-[0_8px_0_0_rgba(0,0,0,0.1)]",
+              theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-[#1a232e] border-white/10"
+            )}>
               {userProfile ? (
                 <img src={getAvatar(userProfile.avatar_url)} alt="Profile" className="w-24 h-24 object-contain" />
               ) : (
@@ -279,7 +322,10 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
       <section className="mb-12">
         <div className="flex items-center gap-3 mb-5">
           <img src={streakAsset} alt="Streak" className="w-8 h-8 object-contain" />
-          <h2 className="text-xl font-black text-white tracking-tight uppercase">Streak Calendar</h2>
+          <h2 className={cn(
+            "text-xl font-black tracking-tight uppercase",
+            theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+          )}>Streak Calendar</h2>
         </div>
         <MonthCalendar 
           month={currentMonth.name} 

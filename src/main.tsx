@@ -2,16 +2,18 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { UserProvider, LessonProvider, StoreProvider } from './contexts'
+import { UserProvider, LessonProvider, StoreProvider, ThemeProvider } from './contexts'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <UserProvider>
-      <LessonProvider>
-        <StoreProvider>
-          <App />
-        </StoreProvider>
-      </LessonProvider>
-    </UserProvider>
+    <ThemeProvider>
+      <UserProvider>
+        <LessonProvider>
+          <StoreProvider>
+            <App />
+          </StoreProvider>
+        </LessonProvider>
+      </UserProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

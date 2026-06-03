@@ -1,68 +1,84 @@
-import { useState, useEffect, useContext } from 'react'
-import { Check, X, CreditCard, ShieldCheck, Zap, Infinity as InfinityIcon } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Check, X, Infinity as InfinityIcon } from 'lucide-react'
 import { cn, getDaysRemaining } from '../lib/utils'
 import { motion } from 'framer-motion'
-import { useStore, useUser } from '../contexts'
+import { useStore, useUser, useTheme } from '../contexts'
 import hearts from '../assets/hearts.png'
 import diamond from '../assets/diamond.png'
 import ice from '../assets/ice.png'
 import { Loader } from '../components/ui/Loader'
-import { createMockCheckoutSession, createStripeCheckoutSession } from '../services'
+import { createStripeCheckoutSession } from '../services'
 
 interface FeatureListProps {
   features: { label: string; included: boolean }[]
   isSelected?: boolean
 }
 
-const FeatureList = ({ features, isSelected }: FeatureListProps) => (
-  <div className="flex flex-col gap-3.5 items-center w-full">
-    <div className="flex flex-col gap-3.5 items-start">
-      {features.map((feature, i) => (
-        <div key={i} className="flex items-start gap-3.5">
-          {feature.included ? (
-            <Check className={cn("w-4 h-4 shrink-0 mt-0.5", isSelected ? "text-duo-green" : "text-duo-green")} strokeWidth={4} />
-          ) : (
-            <X className={cn("w-4 h-4 shrink-0 mt-0.5", isSelected ? "text-duo-red" : "text-duo-red/60")} strokeWidth={4} />
-          )}
-          <span className={cn(
-            "font-bold text-[13px] leading-tight pt-px transition-colors duration-500",
-            isSelected ? "text-gray-800" : "text-white"
-          )}>
-            {feature.label}
-          </span>
-        </div>
-      ))}
-    </div>
-  </div>
-)
-
-const StoreItem = ({ icon, title, description, cost, costIcon, children }: { icon: string, title: string, description: string, cost: string, costIcon?: string, children?: React.ReactNode }) => (
-  <div className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-duo-dark border-2 border-duo-border rounded-2xl hover:bg-white/5 transition-all shadow-[0_4px_0_0_#37464f] active:translate-y-0.5 active:shadow-none">
-    <div className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center shrink-0">
-      <img src={icon} alt={title} className="w-10 h-10 md:w-12 md:h-12 object-contain" />
-    </div>
-    <div className="flex-1 min-w-0">
-      <h3 className="font-bold text-white text-base md:text-lg truncate">{title}</h3>
-      <p className="text-duo-gray text-xs md:text-sm font-bold leading-tight">{description}</p>
-    </div>
-    <div className="flex flex-col items-end gap-2 shrink-0 ml-2">
-      <div className="flex items-center gap-1.5">
-        <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">{cost}</span>
-        {costIcon && <img src={costIcon} alt="cost" className="w-3.5 h-3.5 md:w-4 md:h-4 object-contain" />}
+const FeatureList = ({ features, isSelected }: FeatureListProps) => {
+  const { theme } = useTheme()
+  return (
+    <div className="flex flex-col gap-3.5 items-center w-full">
+      <div className="flex flex-col gap-3.5 items-start">
+        {features.map((feature, i) => (
+          <div key={i} className="flex items-start gap-3.5">
+            {feature.included ? (
+              <Check className={cn("w-4 h-4 shrink-0 mt-0.5", isSelected ? "text-duo-green" : "text-duo-green")} strokeWidth={4} />
+            ) : (
+              <X className={cn("w-4 h-4 shrink-0 mt-0.5", isSelected ? "text-duo-red" : "text-duo-red/60")} strokeWidth={4} />
+            )}
+            <span className={cn(
+              "font-bold text-[13px] leading-tight pt-px transition-colors duration-500",
+              isSelected 
+                ? "text-gray-800" 
+                : (theme === 'light' ? "text-[#4b4b4b]" : "text-white")
+            )}>
+              {feature.label}
+            </span>
+          </div>
+        ))}
       </div>
-      {children}
     </div>
-  </div>
-)
+  )
+}
+
+const StoreItem = ({ icon, title, description, cost, costIcon, children }: { icon: string, title: string, description: string, cost: string, costIcon?: string, children?: React.ReactNode }) => {
+  const { theme } = useTheme()
+  return (
+    <div className={cn(
+      "flex items-center gap-3 md:gap-4 p-3 md:p-4 border-2 rounded-2xl transition-all active:translate-y-0.5 active:shadow-none",
+      theme === 'light' 
+        ? "bg-white border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#F7F7F7]" 
+        : "bg-duo-dark border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"
+    )}>
+      <div className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center shrink-0">
+        <img src={icon} alt={title} className="w-10 h-10 md:w-12 md:h-12 object-contain" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className={cn(
+          "font-bold text-base md:text-lg truncate",
+          theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+        )}>{title}</h3>
+        <p className="text-duo-gray text-xs md:text-sm font-bold leading-tight">{description}</p>
+      </div>
+      <div className="flex flex-col items-end gap-2 shrink-0 ml-2">
+        <div className="flex items-center gap-1.5">
+          <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">{cost}</span>
+          {costIcon && <img src={costIcon} alt="cost" className="w-3.5 h-3.5 md:w-4 md:h-4 object-contain" />}
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
 
 export const StorePage = () => {
   const { storeItems, fetchStoreItems, buyItem } = useStore()
   const { profile, removeUserDiamonds, addUserHearts, refreshProfile, addStreakFreezer, updateUserSubscription } = useUser()
+  const { theme } = useTheme()
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'pro' | 'family'>('pro')
   const [isPurchasing, setIsPurchasing] = useState<string | null>(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [isProcessingSubscription, setIsProcessingSubscription] = useState(false)
-  const [purchaseCost, setPurchaseCost] = useState(0)
   const [successDetails, setSuccessDetails] = useState({ title: '', message: '', newHearts: 0, newDiamonds: 0 })
 
   useEffect(() => {
@@ -81,12 +97,12 @@ export const StorePage = () => {
       const query = new URLSearchParams(window.location.search)
       const sessionId = query.get('session_id')
       if (sessionId) {
-        handleStripeSuccess(sessionId)
+        handleStripeSuccess()
       }
     }
   }, [profile?.id])
 
-  const handleStripeSuccess = async (sessionId: string) => {
+  const handleStripeSuccess = async () => {
     // In a real app, you would verify the session on the backend.
     // For this sandbox, we'll assume success if we return with a session_id.
     setIsProcessingSubscription(true)
@@ -203,7 +219,6 @@ export const StorePage = () => {
       await refreshProfile()
       const newHeartCount = currentHearts + heartsToActuallyAdd
       const newDiamondCount = (profile?.diamonds || 0) - item.cost
-      setPurchaseCost(item.cost)
       setSuccessDetails({
         title: 'Purchase Successful!',
         message: `You added ${heartsToActuallyAdd} heart${heartsToActuallyAdd > 1 ? 's' : ''}!`,
@@ -237,7 +252,6 @@ export const StorePage = () => {
       
       const newDiamondCount = (profile?.diamonds || 0) - item.cost
       const currentFreezers = profile?.streak_freezer_uses || 0
-      setPurchaseCost(item.cost)
       setSuccessDetails({
         title: 'Purchase Successful!',
         message: `You added 1 Streak Freezer! You now have ${currentFreezers + 1} streak freezer(s).`,
@@ -263,10 +277,16 @@ export const StorePage = () => {
       {/* Subscription Section (Now at Top) */}
       <div className="w-full mb-16">
         <div className="flex flex-col items-center w-full">
-          <h1 className="text-2xl md:text-3xl font-black text-white text-center mb-5 tracking-tight leading-none">
+          <h1 className={cn(
+            "text-2xl md:text-3xl font-black text-center mb-5 tracking-tight leading-none",
+            theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+          )}>
             Our Subscription Plan
           </h1>
-          <p className="text-white font-bold text-lg opacity-80 mb-12">Try 1 week free</p>
+          <p className={cn(
+            "font-bold text-lg mb-12",
+            theme === 'light' ? "text-[#4b4b4b]/80" : "text-white opacity-80"
+          )}>Try 1 week free</p>
 
           {/* Combined Plans Container */}
           <div className="w-full flex flex-col md:flex-row items-stretch justify-center gap-4 relative">
@@ -275,19 +295,24 @@ export const StorePage = () => {
               onClick={() => setSelectedPlan('free')}
               initial={false}
               animate={{
-                backgroundColor: selectedPlan === 'free' ? '#ffffff' : '#1f2937',
+                backgroundColor: selectedPlan === 'free' 
+                  ? '#ffffff' 
+                  : (theme === 'light' ? '#F7F7F7' : '#1f2937'),
               }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
               className={cn(
                 "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-0 transition-all active:translate-y-0.5 active:shadow-none",
                 selectedPlan === 'free' 
-                  ? "shadow-[0_4px_0_0_#2d3748] border-white" 
-                  : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"
+                  ? (theme === 'light' ? "shadow-[0_4px_0_0_#E5E5E5] border-[#E5E5E5]" : "shadow-[0_4px_0_0_#2d3748] border-white")
+                  : (theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#E5E5E5]/30" : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5")
               )}
             >
-              <div className="text-center w-full bg-[#2d3748] flex flex-col items-center justify-center py-10">
-                <h3 className="font-black uppercase tracking-widest text-white text-sm">Free</h3>
-                <p className="text-white/70 font-black uppercase tracking-tighter mt-1 text-lg">$0 / mo</p>
+              <div className={cn(
+                "text-center w-full flex flex-col items-center justify-center py-10",
+                theme === 'light' ? "bg-[#E5E5E5]" : "bg-[#2d3748]"
+              )}>
+                <h3 className={cn("font-black uppercase tracking-widest text-sm", theme === 'light' ? "text-[#4b4b4b]" : "text-white")}>Free</h3>
+                <p className={cn("font-black uppercase tracking-tighter mt-1 text-lg", theme === 'light' ? "text-[#4b4b4b]/70" : "text-white/70")}>$0 / mo</p>
               </div>
               <div className="flex-1 flex flex-col items-center justify-center w-full py-9">
                 <FeatureList features={freeFeatures} isSelected={selectedPlan === 'free'} />
@@ -303,14 +328,16 @@ export const StorePage = () => {
               }}
               initial={false}
               animate={{
-                backgroundColor: selectedPlan === 'pro' ? '#ffffff' : '#1f2937',
+                backgroundColor: selectedPlan === 'pro' 
+                  ? '#ffffff' 
+                  : (theme === 'light' ? '#F7F7F7' : '#1f2937'),
               }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
               className={cn(
                 "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-10 transition-all active:translate-y-0.5 active:shadow-none",
                 selectedPlan === 'pro'
-                  ? "shadow-brutal-green border-white"
-                  : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5",
+                  ? (theme === 'light' ? "shadow-brutal-green border-[#58cc02]" : "shadow-brutal-green border-white")
+                  : (theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#E5E5E5]/30" : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"),
                 profile?.is_subscribed && profile.subscription_tier === 'pro' && "cursor-default"
               )}
             >
@@ -334,14 +361,16 @@ export const StorePage = () => {
               }}
               initial={false}
               animate={{
-                backgroundColor: selectedPlan === 'family' ? '#ffffff' : '#1f2937',
+                backgroundColor: selectedPlan === 'family' 
+                  ? '#ffffff' 
+                  : (theme === 'light' ? '#F7F7F7' : '#1f2937'),
               }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
               className={cn(
                 "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-0 transition-all active:translate-y-0.5 active:shadow-none",
                 selectedPlan === 'family'
-                  ? "shadow-brutal-blue border-white" 
-                  : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5",
+                  ? (theme === 'light' ? "shadow-brutal-blue border-[#1cb0f6]" : "shadow-brutal-blue border-white")
+                  : (theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#E5E5E5]/30" : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"),
                 profile?.is_subscribed && profile.subscription_tier === 'family' && "cursor-default"
               )}
             >
@@ -366,7 +395,7 @@ export const StorePage = () => {
             className={cn(
                 "text-white font-black text-sm uppercase tracking-widest px-20 py-5 rounded-2xl transition-all min-w-85 flex items-center justify-center gap-3",
                 selectedPlan === 'free' || (profile?.is_subscribed && profile.subscription_tier === selectedPlan)
-                  ? "bg-duo-gray/20 cursor-not-allowed opacity-50 shadow-[0_4px_0_0_#37464f]"
+                  ? (theme === 'light' ? "bg-[#E5E5E5] text-[#afafaf] cursor-not-allowed shadow-none" : "bg-duo-gray/20 cursor-not-allowed opacity-50 shadow-[0_4px_0_0_#37464f]")
                   : "bg-duo-green shadow-brutal-green hover:bg-[#61e002] active:translate-y-0.5 active:shadow-none"
             )}
           >
@@ -375,7 +404,7 @@ export const StorePage = () => {
             ) : (
               profile?.is_subscribed && profile.subscription_tier === selectedPlan 
                 ? (profile.subscription_status === 'trialing' 
-                    ? `${getDaysRemaining(profile.subscription_end_at)} DAYS LEFT` 
+                    ? `${getDaysRemaining(profile.subscription_end_at || '')} DAYS LEFT` 
                     : 'CURRENT PLAN') 
                 : selectedPlan === 'free' 
                   ? 'FREE PLAN' 
@@ -394,12 +423,18 @@ export const StorePage = () => {
         </div>
 
         {/* Divider */}
-        <div className="w-full h-px bg-duo-border mb-10"></div>
+        <div className={cn(
+          "w-full h-px mb-10",
+          theme === 'light' ? "bg-[#E5E5E5]" : "bg-duo-border"
+        )}></div>
 
         {/* Hearts Section */}
         {heartItems.length > 0 && (
           <section className="mb-10">
-            <h3 className="font-black text-white uppercase tracking-wider mb-4 opacity-60">Hearts</h3>
+            <h3 className={cn(
+              "font-black uppercase tracking-wider mb-4 opacity-60",
+              theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+            )}>Hearts</h3>
             <div className="space-y-3">
               {heartItems.map(item => (
                 <StoreItem 
@@ -417,10 +452,15 @@ export const StorePage = () => {
                           purchaseHeartRefill(item, heartsToAdd, isRefill);
                         }}
                         disabled={profile?.is_subscribed || isPurchasing !== null || (profile?.diamonds || 0) < item.cost || ((profile?.hearts || 0) >= 5 && item.title.toLowerCase().includes('refill'))}
-                        className="flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 border-duo-border rounded-xl hover:bg-white/5 transition-all shadow-[0_2px_0_0_#37464f] active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={cn(
+                          "flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 rounded-xl transition-all active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed",
+                          theme === 'light' 
+                            ? "border-[#E5E5E5] shadow-[0_2px_0_0_#E5E5E5] hover:bg-[#F7F7F7]" 
+                            : "border-duo-border shadow-[0_2px_0_0_#37464f] hover:bg-white/5"
+                        )}
                       >
                         {isPurchasing === item.id ? (
-                          <Loader className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                          <Loader className={cn("w-4 h-4 md:w-5 md:h-5", theme === 'light' ? "text-[#4b4b4b]" : "text-white")} />
                         ) : profile?.is_subscribed ? (
                           <InfinityIcon className="w-5 h-5 text-duo-blue" />
                         ) : (
@@ -437,8 +477,14 @@ export const StorePage = () => {
         {powerUpItems.length > 0 && (
           <section className="mb-10">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-black text-white uppercase tracking-wider opacity-60">Streak Freezer</h3>
-              <span className="text-white/70 text-sm">You have: {profile?.streak_freezer_uses || 0}</span>
+              <h3 className={cn(
+                "font-black uppercase tracking-wider opacity-60",
+                theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+              )}>Streak Freezer</h3>
+              <span className={cn(
+                "text-sm",
+                theme === 'light' ? "text-[#4b4b4b]/70" : "text-white/70"
+              )}>You have: {profile?.streak_freezer_uses || 0}</span>
             </div>
             <div className="space-y-3">
               {powerUpItems.map(item => (
@@ -453,10 +499,15 @@ export const StorePage = () => {
                       <button
                         onClick={() => purchaseStreakFreezer(item)}
                         disabled={isPurchasing !== null || (profile?.diamonds || 0) < item.cost}
-                        className="flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 border-duo-border rounded-xl hover:bg-white/5 transition-all shadow-[0_2px_0_0_#37464f] active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={cn(
+                          "flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 rounded-xl transition-all active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed",
+                          theme === 'light' 
+                            ? "border-[#E5E5E5] shadow-[0_2px_0_0_#E5E5E5] hover:bg-[#F7F7F7]" 
+                            : "border-duo-border shadow-[0_2px_0_0_#37464f] hover:bg-white/5"
+                        )}
                       >
                         {isPurchasing === item.id ? (
-                          <Loader className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                          <Loader className={cn("w-4 h-4 md:w-5 md:h-5", theme === 'light' ? "text-[#4b4b4b]" : "text-white")} />
                         ) : (
                           <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">BUY</span>
                         )}
@@ -476,7 +527,12 @@ export const StorePage = () => {
       {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowSuccessModal(false)}>
-          <div className="bg-duo-dark border-2 border-duo-border rounded-3xl p-8 max-w-md w-full mx-4 shadow-[0_8px_0_0_#37464f] animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+          <div className={cn(
+            "border-2 rounded-3xl p-8 max-w-md w-full mx-4 animate-in fade-in zoom-in duration-200",
+            theme === 'light' 
+              ? "bg-white border-[#E5E5E5] shadow-[0_8px_0_0_#E5E5E5]" 
+              : "bg-duo-dark border-duo-border shadow-[0_8px_0_0_#37464f]"
+          )} onClick={e => e.stopPropagation()}>
             <div className="flex flex-col items-center text-center gap-6">
               {/* Success Icon */}
               <div className="w-20 h-20 rounded-full bg-duo-green/20 flex items-center justify-center">
@@ -484,15 +540,24 @@ export const StorePage = () => {
               </div>
               
               {/* Success Title */}
-              <h2 className="font-black text-white text-2xl uppercase tracking-wider">{successDetails.title}</h2>
+              <h2 className={cn(
+                "font-black text-2xl uppercase tracking-wider",
+                theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+              )}>{successDetails.title}</h2>
               
               {/* Success Message */}
-              <p className="text-duo-gray font-bold text-lg">{successDetails.message}</p>
+              <p className={cn(
+                "font-bold text-lg",
+                theme === 'light' ? "text-[#4b4b4b]/80" : "text-duo-gray"
+              )}>{successDetails.message}</p>
               
               {/* Close Button */}
               <button
                 onClick={() => setShowSuccessModal(false)}
-                className="w-full py-4 bg-duo-green border-2 border-duo-green rounded-2xl font-black text-white uppercase tracking-widest text-sm shadow-brutal-green active:translate-y-1 active:shadow-none transition-all"
+                className={cn(
+                  "w-full py-4 bg-duo-green border-2 border-duo-green rounded-2xl font-black text-white uppercase tracking-widest text-sm shadow-brutal-green active:translate-y-1 active:shadow-none transition-all",
+                  theme === 'light' && "hover:bg-[#61e002]"
+                )}
               >
                 Close
               </button>

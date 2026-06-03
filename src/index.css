@@ -3,16 +3,16 @@
 @theme {
   --color-duo-green: #58cc02;
   --color-duo-dark-green: #46a302;
-  --color-duo-dark: #131f24;
-  --color-duo-darker: #0a1012;
-  --color-duo-gray: #afafaf;
-  --color-duo-border: #37464f;
+  --color-duo-dark: var(--bg-main);
+  --color-duo-darker: var(--bg-secondary);
+  --color-duo-gray: var(--text-muted);
+  --color-duo-border: var(--border-color);
   --color-duo-blue: #84d8ff;
   --color-duo-red: #ff4b4b;
   --color-duo-orange: #ff9600;
   --color-duo-yellow: #ffc800;
-  --color-duo-active: #2e383d;
-  --color-duo-active-border: #4b585f;
+  --color-duo-active: var(--bg-active);
+  --color-duo-active-border: var(--border-active);
 
   --shadow-brutal: 0 4px 0 0 #000;
   --shadow-brutal-lg: 0 8px 0 0 #000;
@@ -25,6 +25,30 @@
 
   --font-din: "DinRound", system-ui, -apple-system, sans-serif;
   --font-khmer: "Kantumruy Pro", "DinRound", system-ui, sans-serif;
+}
+
+:root {
+  /* Dark Mode (Default) */
+  --bg-main: #131f24;
+  --bg-secondary: #0a1012;
+  --bg-active: #2e383d;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --text-main: #ffffff;
+  --text-muted: #afafaf;
+  --border-color: #37464f;
+  --border-active: #4b585f;
+}
+
+:root.light {
+  /* Light Mode Overrides */
+  --bg-main: #FFFFFF;
+  --bg-secondary: #f7f7f7;
+  --bg-active: #FFFFFF;
+  --bg-hover: #f7f7f7;
+  --text-main: #4b4b4b;
+  --text-muted: #777777;
+  --border-color: #e5e5e5;
+  --border-active: #e5e5e5;
 }
 
 /* DinRound Pro */
@@ -98,7 +122,7 @@
   }
 
   body {
-    @apply bg-duo-dark text-white antialiased;
+    @apply bg-duo-dark text-[var(--text-main)] antialiased;
     font-family: var(--font-din);
   }
 }
@@ -140,11 +164,11 @@
   }
 
   .brutal-button-gray {
-    @apply bg-transparent border-2 border-duo-border text-duo-gray hover:bg-white/5;
+    @apply bg-transparent border-2 border-duo-border text-duo-gray hover:bg-[var(--bg-hover)];
   }
 
   .sidebar-item {
-    @apply flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-bold uppercase tracking-widest text-sm text-duo-gray hover:bg-white/5;
+    @apply flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-bold uppercase tracking-widest text-sm text-duo-gray hover:bg-[var(--bg-hover)];
   }
 
   .sidebar-item.active {

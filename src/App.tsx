@@ -8,6 +8,7 @@ import { StorePage } from './pages/StorePage'
 import { LettersPage } from './pages/LettersPage'
 import { PracticePage } from './pages/PracticePage'
 import { ProfilePage } from './pages/ProfilePage'
+import { SettingsPage } from './pages/SettingsPage'
 import { LessonPage } from './pages/LessonPage'
 import LessonComplete from './pages/LessonComplete.tsx'
 import QuestsPage from './pages/QuestsPage'
@@ -18,15 +19,14 @@ import { UpdatePasswordPage } from './pages/UpdatePasswordPage'
 import { cn } from './lib/utils'
 import { useUser } from './contexts'
 import { supabase } from './lib/supabase'
-import lily from './assets/Lily.png'
 import { Loader } from './components/ui/Loader'
-import { calculateHeartsToRegenerate, MAX_HEARTS, HEART_REGENERATION_TIME } from './lib/hearts'
+import { ScrollToTop } from './components/ui/ScrollToTop'
 import { type Challenge, type Lesson } from './services'
 
 function App() {
   const { user, isAuthenticated, isLoading, profile, quests, refreshProfile } = useUser()
   const [authView, setAuthView] = useState<'login' | 'signup'>('login')
-  const [view, setView] = useState<'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'lesson' | 'lesson-complete' | 'quests' | 'leaderboard' | 'update-password'>('learn')
+  const [view, setView] = useState<'learn' | 'shop' | 'letters' | 'practice' | 'profile' | 'lesson' | 'lesson-complete' | 'quests' | 'leaderboard' | 'update-password' | 'settings'>('learn')
   const [userProgress, setUserProgress] = useState<any[]>([])
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
   const [currentLessonData, setCurrentLessonData] = useState<{ lesson: Lesson; challenges: Challenge[] } | null>(null)
@@ -214,6 +214,7 @@ function App() {
           onProfileClick={() => setView('profile')}
           onQuestsClick={() => setView('quests')}
           onLeaderboardClick={() => setView('leaderboard')}
+          onSettingsClick={() => setView('settings')}
         />
       )}
       
@@ -246,6 +247,7 @@ function App() {
             {view === 'practice' && <PracticePage onStartLesson={handleStartReviewLesson} />}
             {view === 'quests' && <QuestsPage />}
             {view === 'leaderboard' && <LeaderboardPage />}
+            {view === 'settings' && <SettingsPage />}
             {view === 'profile' && (
               <ProfilePage 
                 user={user}
@@ -257,7 +259,7 @@ function App() {
             )}
           </main>
 
-          {(view === 'learn' || view === 'letters' || view === 'practice' || view === 'profile' || view === 'quests' || view === 'leaderboard') && (
+          {(view === 'learn' || view === 'letters' || view === 'practice' || view === 'profile' || view === 'quests' || view === 'leaderboard' || view === 'settings') && (
             <div className="w-80 hidden xl:block">
               <RightSidebar 
                 userProfile={profile} 
@@ -269,6 +271,7 @@ function App() {
           )}
         </div>
       )}
+      {view === 'learn' && <ScrollToTop />}
     </div>
   )
 }

@@ -515,7 +515,7 @@ export const LessonPage = ({
               "font-bold text-base md:text-xl",
               profile?.is_subscribed ? "text-duo-blue" : "text-duo-red"
             )}>
-              {profile?.is_subscribed ? <InfinityIcon className="w-5 h-5 md:w-6 md:h-6" /> : (profile?.hearts ?? 5)}
+              {profile?.is_subscribed ? <InfinityIcon className="w-5 h-5 md:w-6 md:h-6" strokeWidth={3} /> : (profile?.hearts ?? 5)}
             </span>
           </div>
         </header>

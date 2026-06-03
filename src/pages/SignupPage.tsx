@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { useUser } from '../contexts'
+import { useUser, useTheme } from '../contexts'
 import logo from '../assets/sursdey_logo.png' // Import correct logo file
 import { Loader } from '../components/ui/Loader'
 
 export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
   const { signup, error } = useUser()
+  const { theme } = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -51,15 +52,26 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-duo-dark flex items-center justify-center px-4 relative overflow-hidden">
+      <div className={cn(
+        "min-h-screen flex items-center justify-center px-4 relative overflow-hidden",
+        theme === 'light' ? "bg-white" : "bg-duo-dark"
+      )}>
         <div className="w-full max-w-md relative z-10 text-center">
-          <div className="bg-[#1a232e] border-2 border-duo-border rounded-3xl p-8 shadow-[0_8px_0_0_#202f36] flex flex-col items-center">
+          <div className={cn(
+            "border-2 rounded-3xl p-8 flex flex-col items-center transition-all",
+            theme === 'light' 
+              ? "bg-white border-[#E5E5E5] shadow-[0_8px_0_0_#E5E5E5]" 
+              : "bg-[#1a232e] border-duo-border shadow-[0_8px_0_0_#202f36]"
+          )}>
             <img src={logo} alt="Soursdey Logo" className="w-20 h-20 mb-6" />
             <h1 className="text-3xl font-black text-duo-green mb-4 uppercase tracking-wide">
               Verify Email
             </h1>
             <p className="text-duo-gray font-bold text-sm mb-8 leading-relaxed max-w-xs">
-              We've sent a verification link to <span className="text-white block truncate">{email}</span> Please check your inbox and confirm your email before logging in.
+              We've sent a verification link to <span className={cn(
+                "block truncate",
+                theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+              )}>{email}</span> Please check your inbox and confirm your email before logging in.
             </p>
           </div>
         </div>
@@ -68,7 +80,10 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
   }
 
   return (
-    <div className="min-h-screen bg-duo-dark flex items-center justify-center px-4 relative overflow-hidden">
+    <div className={cn(
+      "min-h-screen flex items-center justify-center px-4 relative overflow-hidden",
+      theme === 'light' ? "bg-white" : "bg-duo-dark"
+    )}>
       <div className="w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-12 flex flex-col items-center">
@@ -85,7 +100,10 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
 
           {/* Email Input */}
           <div>
-            <label className="block text-white font-bold text-sm uppercase tracking-wider mb-2">
+            <label className={cn(
+              "block font-bold text-sm uppercase tracking-wider mb-2",
+              theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+            )}>
               Email
             </label>
             <div className="relative">
@@ -99,8 +117,13 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className={cn(
-                  "w-full pl-12 pr-4 py-3.5 bg-[#1a232e] border-2 rounded-xl text-white placeholder-duo-gray font-bold focus:outline-none transition-colors",
-                  (error || localError) ? 'border-duo-red' : 'border-duo-border focus:border-duo-green'
+                  "w-full pl-12 pr-4 py-3.5 border-2 rounded-xl font-bold focus:outline-none transition-colors",
+                  theme === 'light' 
+                    ? "bg-white text-[#4B4B4B] placeholder-duo-gray/60" 
+                    : "bg-[#1a232e] text-white placeholder-duo-gray",
+                  (error || localError) 
+                    ? 'border-duo-red' 
+                    : (theme === 'light' ? 'border-[#E5E5E5] focus:border-duo-green' : 'border-duo-border focus:border-duo-green')
                 )}
                 disabled={isLoading}
               />
@@ -109,7 +132,10 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
 
           {/* Password Input */}
           <div>
-            <label className="block text-white font-bold text-sm uppercase tracking-wider mb-2">
+            <label className={cn(
+              "block font-bold text-sm uppercase tracking-wider mb-2",
+              theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+            )}>
               Password
             </label>
             <div className="relative">
@@ -123,15 +149,23 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Min. 6 characters"
                 className={cn(
-                  "w-full pl-12 pr-12 py-3.5 bg-[#1a232e] border-2 rounded-xl text-white placeholder-duo-gray font-bold focus:outline-none transition-colors",
-                  (error || localError) ? 'border-duo-red' : 'border-duo-border focus:border-duo-green'
+                  "w-full pl-12 pr-12 py-3.5 border-2 rounded-xl font-bold focus:outline-none transition-colors",
+                  theme === 'light' 
+                    ? "bg-white text-[#4B4B4B] placeholder-duo-gray/60" 
+                    : "bg-[#1a232e] text-white placeholder-duo-gray",
+                  (error || localError) 
+                    ? 'border-duo-red' 
+                    : (theme === 'light' ? 'border-[#E5E5E5] focus:border-duo-green' : 'border-duo-border focus:border-duo-green')
                 )}
                 disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-duo-gray hover:text-white transition-colors"
+                className={cn(
+                  "absolute right-4 top-1/2 -translate-y-1/2 text-duo-gray transition-colors",
+                  theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white"
+                )}
                 disabled={isLoading}
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -141,7 +175,10 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
 
           {/* Confirm Password Input */}
           <div>
-            <label className="block text-white font-bold text-sm uppercase tracking-wider mb-2">
+            <label className={cn(
+              "block font-bold text-sm uppercase tracking-wider mb-2",
+              theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+            )}>
               Confirm Password
             </label>
             <div className="relative">
@@ -155,15 +192,23 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your password"
                 className={cn(
-                  "w-full pl-12 pr-12 py-3.5 bg-[#1a232e] border-2 rounded-xl text-white placeholder-duo-gray font-bold focus:outline-none transition-colors",
-                  (error || localError) ? 'border-duo-red' : 'border-duo-border focus:border-duo-green'
+                  "w-full pl-12 pr-12 py-3.5 border-2 rounded-xl font-bold focus:outline-none transition-colors",
+                  theme === 'light' 
+                    ? "bg-white text-[#4B4B4B] placeholder-duo-gray/60" 
+                    : "bg-[#1a232e] text-white placeholder-duo-gray",
+                  (error || localError) 
+                    ? 'border-duo-red' 
+                    : (theme === 'light' ? 'border-[#E5E5E5] focus:border-duo-green' : 'border-duo-border focus:border-duo-green')
                 )}
                 disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-duo-gray hover:text-white transition-colors"
+                className={cn(
+                  "absolute right-4 top-1/2 -translate-y-1/2 text-duo-gray transition-colors",
+                  theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white"
+                )}
                 disabled={isLoading}
               >
                 {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -173,7 +218,10 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
 
           {/* Error Message */}
           {(error || localError) && (
-            <div className="p-3 bg-duo-red/20 border-2 border-duo-red rounded-xl">
+            <div className={cn(
+              "p-3 border-2 rounded-xl",
+              theme === 'light' ? "bg-duo-red/10 border-duo-red/20" : "bg-duo-red/20 border-duo-red"
+            )}>
               <p className="text-duo-red font-bold text-sm">{error || localError}</p>
             </div>
           )}
@@ -185,7 +233,7 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
             className={cn(
               "w-full py-4 px-6 font-black text-sm uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 mt-6",
               isLoading
-                ? "bg-gray-600 cursor-not-allowed opacity-50"
+                ? (theme === 'light' ? "bg-[#E5E5E5] text-[#AFAFAF] cursor-not-allowed" : "bg-gray-600 cursor-not-allowed opacity-50")
                 : "bg-duo-green text-white shadow-brutal-green hover:bg-[#61e002] active:translate-y-1 active:shadow-none"
             )}
           >

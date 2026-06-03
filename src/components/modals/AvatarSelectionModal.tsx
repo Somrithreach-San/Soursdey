@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { useEffect } from 'react'
 import { cn } from '../../lib/utils'
+import { useTheme } from '../../contexts'
 
 import lily from '../../assets/Lily.png'
 import jason from '../../assets/Jason.png'
@@ -17,6 +18,7 @@ const avatars = [
 ]
 
 export const AvatarSelectionModal = ({ isOpen, onClose, onSelect, currentAvatar }: { isOpen: boolean, onClose: () => void, onSelect: (avatar: string) => void, currentAvatar: string }) => {
+  const { theme } = useTheme()
   useEffect(() => {
     if (isOpen) {
       // Disable background scroll when modal is open
@@ -35,9 +37,15 @@ export const AvatarSelectionModal = ({ isOpen, onClose, onSelect, currentAvatar 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-      <div className="bg-[#1a232e] border-2 border-white/10 rounded-2xl p-8 max-w-lg w-full relative">
-        <h2 className="text-2xl font-black text-white mb-6">Choose Your Avatar</h2>
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={onClose}>
+      <div className={cn(
+        "border-2 rounded-2xl p-8 max-w-lg w-full relative",
+        theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-[#1a232e] border-white/10"
+      )} onClick={e => e.stopPropagation()}>
+        <h2 className={cn(
+          "text-2xl font-black mb-6",
+          theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+        )}>Choose Your Avatar</h2>
         <div className="grid grid-cols-3 gap-6 mb-6">
           {avatars.map(avatar => (
             <button 
@@ -45,14 +53,19 @@ export const AvatarSelectionModal = ({ isOpen, onClose, onSelect, currentAvatar 
               onClick={() => onSelect(`${avatar.name}.png`)}
               className={cn(
                 "p-2 rounded-xl border-2 transition-all",
-                currentAvatar === avatar.src ? "border-duo-green bg-duo-green/20" : "border-transparent hover:bg-white/10"
+                currentAvatar === avatar.src 
+                  ? "border-duo-green bg-duo-green/20" 
+                  : (theme === 'light' ? "border-transparent hover:bg-[#F7F7F7]" : "border-transparent hover:bg-white/10")
               )}
             >
               <img src={avatar.src} alt={avatar.name} className="w-full h-full object-contain" />
             </button>
           ))}
         </div>
-        <button onClick={onClose} className="absolute top-4 right-4 text-duo-gray hover:text-white">
+        <button onClick={onClose} className={cn(
+          "absolute top-4 right-4",
+          theme === 'light' ? "text-[#afafaf] hover:text-[#4b4b4b]" : "text-duo-gray hover:text-white"
+        )}>
           <X className="w-6 h-6" />
         </button>
       </div>
