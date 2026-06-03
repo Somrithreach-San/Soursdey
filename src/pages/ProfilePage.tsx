@@ -229,8 +229,15 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
           <div className="flex-1">
             {userProfile ? (
               <>
-                <div className="flex items-center gap-2 mb-2">
-                  <h1 className="text-3xl font-black text-white">{userProfile.username}</h1>
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-3xl font-black text-white">{userProfile.username}</h1>
+                    {userProfile?.is_subscribed && (
+                      <div className="bg-duo-green text-xs font-black px-2 py-1 rounded-md uppercase text-white shadow-[0_2px_0_0_#46a302]">
+                        PRO
+                      </div>
+                    )}
+                  </div>
                   <button onClick={() => setIsUsernameModalOpen(true)} className="p-1 rounded-full hover:bg-white/10 transition-colors">
                     <Pencil className="w-5 h-5 text-duo-gray" />
                   </button>

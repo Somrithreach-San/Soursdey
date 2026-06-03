@@ -15,6 +15,14 @@ CREATE TABLE IF NOT EXISTS profiles (
   last_heart_update TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   last_streak_update TIMESTAMP WITH TIME ZONE,
   streak_dates TEXT[] DEFAULT ARRAY[]::TEXT[],
+  streak_freezer_uses INT DEFAULT 0,
+  xp INT DEFAULT 0,
+  is_subscribed BOOLEAN DEFAULT false,
+  subscription_tier TEXT DEFAULT 'free',
+  subscription_status TEXT DEFAULT 'none',
+  subscription_end_at TIMESTAMP WITH TIME ZONE,
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

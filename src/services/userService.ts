@@ -4,7 +4,7 @@ import { calculateHeartsToRegenerate, MAX_HEARTS, HEART_REGENERATION_TIME } from
 export interface Profile {
   id: string
   username: string
-  email: string
+  email: string | null
   avatar_url?: string
   streak: number
   diamonds: number
@@ -15,6 +15,12 @@ export interface Profile {
   last_streak_update?: string
   streak_dates?: string[] // Array of ISO dates where the user maintained their streak
   streak_freezer_uses?: number // Number of streak freezers remaining in inventory
+  is_subscribed: boolean
+  subscription_tier: 'free' | 'pro' | 'family'
+  subscription_status: 'none' | 'active' | 'trialing' | 'canceled' | 'expired'
+  subscription_end_at?: string
+  stripe_customer_id?: string
+  stripe_subscription_id?: string
 }
 
 export interface Quest {
@@ -59,6 +65,9 @@ export async function createProfile(userId: string, username: string, email: str
           diamonds: 10,
           hearts: 5,
           xp: 0,
+          is_subscribed: false,
+          subscription_tier: 'free',
+          subscription_status: 'none',
           created_at: new Date().toISOString(),
           last_heart_update: new Date().toISOString(),
           last_streak_update: null,
@@ -106,16 +115,44 @@ export async function getUserProfile(userId: string): Promise<Profile | null> {
     // Handle heart regeneration
     const { heartsToAdd, needsUpdate } = calculateHeartsToRegenerate(data.hearts, data.last_heart_update);
 
-    if (needsUpdate && heartsToAdd > 0) {
-      const newHeartCount = Math.min(data.hearts + heartsToAdd, MAX_HEARTS);
-      const newLastHeartUpdate = new Date(new Date(data.last_heart_update).getTime() + heartsToAdd * HEART_REGENERATION_TIME).toISOString();
+    // Check if subscription has expired
+    let isSubscribed = data.is_subscribed;
+    let subscriptionStatus = data.subscription_status;
+    let subscriptionTier = data.subscription_tier;
+    let subscriptionNeedsUpdate = false;
+
+    if (data.is_subscribed && data.subscription_end_at) {
+      const now = new Date();
+      const endAt = new Date(data.subscription_end_at);
+      if (now > endAt) {
+        console.log('Subscription expired! Reverting to free tier.');
+        isSubscribed = false;
+        subscriptionStatus = 'expired';
+        subscriptionTier = 'free';
+        subscriptionNeedsUpdate = true;
+      }
+    }
+
+    if ((needsUpdate && heartsToAdd > 0) || subscriptionNeedsUpdate) {
+      const newHeartCount = needsUpdate ? Math.min(data.hearts + heartsToAdd, MAX_HEARTS) : data.hearts;
+      const newLastHeartUpdate = needsUpdate 
+        ? new Date(new Date(data.last_heart_update).getTime() + heartsToAdd * HEART_REGENERATION_TIME).toISOString()
+        : data.last_heart_update;
+
+      const updates: any = {
+        hearts: newHeartCount,
+        last_heart_update: newLastHeartUpdate
+      };
+
+      if (subscriptionNeedsUpdate) {
+        updates.is_subscribed = isSubscribed;
+        updates.subscription_status = subscriptionStatus;
+        updates.subscription_tier = subscriptionTier;
+      }
 
       const { data: updatedData, error: updateError } = await supabase
         .from('profiles')
-        .update({ 
-          hearts: newHeartCount,
-          last_heart_update: newLastHeartUpdate
-        })
+        .update(updates)
         .eq('id', userId)
         .select()
         .single();

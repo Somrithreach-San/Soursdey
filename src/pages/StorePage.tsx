@@ -1,13 +1,13 @@
 import { useState, useEffect, useContext } from 'react'
-import { Check, X } from 'lucide-react'
-import { cn } from '../lib/utils'
+import { Check, X, CreditCard, ShieldCheck, Zap, Infinity as InfinityIcon } from 'lucide-react'
+import { cn, getDaysRemaining } from '../lib/utils'
 import { motion } from 'framer-motion'
-import { useStore } from '../contexts'
-import { UserContext } from '../contexts/UserContext'
+import { useStore, useUser } from '../contexts'
 import hearts from '../assets/hearts.png'
 import diamond from '../assets/diamond.png'
 import ice from '../assets/ice.png'
 import { Loader } from '../components/ui/Loader'
+import { createMockCheckoutSession, createStripeCheckoutSession } from '../services'
 
 interface FeatureListProps {
   features: { label: string; included: boolean }[]
@@ -57,16 +57,68 @@ const StoreItem = ({ icon, title, description, cost, costIcon, children }: { ico
 
 export const StorePage = () => {
   const { storeItems, fetchStoreItems, buyItem } = useStore()
-  const { profile, removeUserDiamonds, addUserHearts, refreshProfile, addStreakFreezer } = useContext(UserContext)!
+  const { profile, removeUserDiamonds, addUserHearts, refreshProfile, addStreakFreezer, updateUserSubscription } = useUser()
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'pro' | 'family'>('pro')
   const [isPurchasing, setIsPurchasing] = useState<string | null>(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [isProcessingSubscription, setIsProcessingSubscription] = useState(false)
   const [purchaseCost, setPurchaseCost] = useState(0)
   const [successDetails, setSuccessDetails] = useState({ title: '', message: '', newHearts: 0, newDiamonds: 0 })
 
   useEffect(() => {
+    if (profile?.is_subscribed) {
+      setSelectedPlan(profile.subscription_tier)
+    }
+  }, [profile])
+
+  useEffect(() => {
     fetchStoreItems()
   }, [])
+
+  useEffect(() => {
+    // Check for Stripe success session_id - ONLY if we have a profile/userId
+    if (profile?.id) {
+      const query = new URLSearchParams(window.location.search)
+      const sessionId = query.get('session_id')
+      if (sessionId) {
+        handleStripeSuccess(sessionId)
+      }
+    }
+  }, [profile?.id])
+
+  const handleStripeSuccess = async (sessionId: string) => {
+    // In a real app, you would verify the session on the backend.
+    // For this sandbox, we'll assume success if we return with a session_id.
+    setIsProcessingSubscription(true)
+    try {
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname)
+      
+      // We can't easily get the tier from the session_id on the frontend without a backend call,
+      // but we can check what the user last selected or just default to 'pro' for the demo.
+      // Better: we can look at the session details if we use the secret key (dangerous but okay for sandbox).
+      
+      const tier = (localStorage.getItem('pending_subscription_tier') as 'pro' | 'family') || 'pro'
+      const isTrial = true // For now, we assume all new signups from this page are trials as per UI
+      
+      await updateUserSubscription(tier, isTrial)
+      
+      setSuccessDetails({
+        title: isTrial ? 'Trial Started!' : 'Subscription Active!',
+        message: isTrial 
+          ? `Your 1-week free trial of Soursdey ${tier.toUpperCase()} has started! You won't be charged until the trial ends.`
+          : `Welcome to Soursdey ${tier.toUpperCase()}! Your premium features are now active.`,
+        newHearts: profile?.hearts || 0,
+        newDiamonds: profile?.diamonds || 0
+      })
+      setShowSuccessModal(true)
+    } catch (err) {
+      console.error('Finalizing subscription failed:', err)
+      alert(`Subscription Activation Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setIsProcessingSubscription(false)
+    }
+  }
 
   useEffect(() => {
     if (showSuccessModal) {
@@ -79,12 +131,37 @@ export const StorePage = () => {
     };
   }, [showSuccessModal]);
 
+  // Handle subscription checkout
+  const handleSubscriptionCheckout = async () => {
+    if (selectedPlan === 'free' || !profile) return
+    
+    setIsProcessingSubscription(true)
+    try {
+      // Store the tier in localStorage so we know what to activate on return
+      localStorage.setItem('pending_subscription_tier', selectedPlan)
+      
+      // Create real Stripe checkout session
+      const session = await createStripeCheckoutSession(selectedPlan, profile.id, profile.email)
+      
+      if (session.url) {
+        // Redirect to real Stripe Checkout
+        window.location.href = session.url
+      } else {
+        throw new Error('Failed to create checkout session URL')
+      }
+    } catch (err) {
+      console.error('Subscription failed:', err)
+      alert(`Stripe Error: ${err instanceof Error ? err.message : 'Failed to start checkout'}`)
+    } finally {
+      setIsProcessingSubscription(false)
+    }
+  }
+
   const freeFeatures = [
     { label: 'Learning content', included: true },
     { label: 'Unlimited Hearts', included: false },
     { label: 'Skills practice', included: false },
     { label: 'Mistakes review', included: false },
-    { label: 'Free challenge entry', included: false },
     { label: 'No ads', included: false },
   ]
 
@@ -93,7 +170,6 @@ export const StorePage = () => {
     { label: 'Unlimited Hearts', included: true },
     { label: 'Skills practice', included: true },
     { label: 'Mistakes review', included: true },
-    { label: 'Free challenge entry', included: true },
     { label: 'No ads', included: true },
   ]
 
@@ -101,9 +177,9 @@ export const StorePage = () => {
     { label: 'Learning content', included: true },
     { label: 'Unlimited Hearts', included: true },
     { label: 'Skills practice', included: true },
-    { label: 'Free challenge entry', included: true },
+    { label: 'Mistakes review', included: true },
     { label: 'No ads', included: true },
-    { label: 'Up to 6 accounts', included: true },
+    { label: 'Up to 3 accounts', included: true },
   ]
 
   // Handle purchases
@@ -220,7 +296,11 @@ export const StorePage = () => {
 
             {/* Pro Plan */}
             <motion.button 
-              onClick={() => setSelectedPlan('pro')}
+              onClick={() => {
+                if (!profile?.is_subscribed || profile.subscription_tier !== 'pro') {
+                  setSelectedPlan('pro')
+                }
+              }}
               initial={false}
               animate={{
                 backgroundColor: selectedPlan === 'pro' ? '#ffffff' : '#1f2937',
@@ -230,12 +310,15 @@ export const StorePage = () => {
                 "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-10 transition-all active:translate-y-0.5 active:shadow-none",
                 selectedPlan === 'pro'
                   ? "shadow-brutal-green border-white"
-                  : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"
+                  : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5",
+                profile?.is_subscribed && profile.subscription_tier === 'pro' && "cursor-default"
               )}
             >
               <div className="text-center w-full bg-duo-green flex flex-col items-center justify-center py-10">
-                <h3 className="font-black uppercase tracking-widest text-white text-sm">Pro</h3>
-                <p className="text-white/90 font-black uppercase tracking-tighter mt-1 text-lg">$6.99 / mo</p>
+                <h3 className="font-black uppercase tracking-widest text-white text-sm">
+                  {profile?.is_subscribed && profile.subscription_tier === 'pro' ? 'Your Plan' : 'Pro'}
+                </h3>
+                <p className="text-white/90 font-black uppercase tracking-tighter mt-1 text-lg">$2.99 / mo</p>
               </div>
               <div className="flex-1 flex flex-col items-center justify-center w-full bg-white/0 py-9">
                 <FeatureList features={proFeatures} isSelected={selectedPlan === 'pro'} />
@@ -244,7 +327,11 @@ export const StorePage = () => {
 
             {/* Pro Family Plan */}
             <motion.button 
-              onClick={() => setSelectedPlan('family')}
+              onClick={() => {
+                if (!profile?.is_subscribed || profile.subscription_tier !== 'family') {
+                  setSelectedPlan('family')
+                }
+              }}
               initial={false}
               animate={{
                 backgroundColor: selectedPlan === 'family' ? '#ffffff' : '#1f2937',
@@ -254,12 +341,15 @@ export const StorePage = () => {
                 "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-0 transition-all active:translate-y-0.5 active:shadow-none",
                 selectedPlan === 'family'
                   ? "shadow-brutal-blue border-white" 
-                  : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"
+                  : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5",
+                profile?.is_subscribed && profile.subscription_tier === 'family' && "cursor-default"
               )}
             >
               <div className="text-center w-full bg-[#1cb0f6] flex flex-col items-center justify-center py-10">
-                <h3 className="font-black uppercase tracking-widest text-white text-sm">Pro Family</h3>
-                <p className="text-white/80 font-black uppercase tracking-tighter mt-1 text-lg">$9.99 / mo</p>
+                <h3 className="font-black uppercase tracking-widest text-white text-sm">
+                  {profile?.is_subscribed && profile.subscription_tier === 'family' ? 'Your Plan' : 'Pro Family'}
+                </h3>
+                <p className="text-white/80 font-black uppercase tracking-tighter mt-1 text-lg">$4.99 / mo</p>
               </div>
               <div className="flex-1 flex flex-col items-center justify-center w-full py-9">
                 <FeatureList features={familyFeatures} isSelected={selectedPlan === 'family'} />
@@ -271,15 +361,26 @@ export const StorePage = () => {
         {/* Action Button */}
         <div className="w-full flex justify-center mt-14 mb-8">
           <button 
-            disabled={selectedPlan === 'free'}
+            onClick={handleSubscriptionCheckout}
+            disabled={selectedPlan === 'free' || isProcessingSubscription || (profile?.is_subscribed && profile.subscription_tier === selectedPlan)}
             className={cn(
-                "text-white font-black text-sm uppercase tracking-widest px-20 py-5 rounded-2xl transition-all min-w-85",
-                selectedPlan === 'free'
-                  ? "bg-gray-600 cursor-not-allowed opacity-50 shadow-none"
+                "text-white font-black text-sm uppercase tracking-widest px-20 py-5 rounded-2xl transition-all min-w-85 flex items-center justify-center gap-3",
+                selectedPlan === 'free' || (profile?.is_subscribed && profile.subscription_tier === selectedPlan)
+                  ? "bg-duo-gray/20 cursor-not-allowed opacity-50 shadow-[0_4px_0_0_#37464f]"
                   : "bg-duo-green shadow-brutal-green hover:bg-[#61e002] active:translate-y-0.5 active:shadow-none"
             )}
           >
-            {selectedPlan === 'free' ? 'CURRENT PLAN' : 'START MY 1 WEEK FREE'}
+            {isProcessingSubscription ? (
+              <Loader className="w-5 h-5 text-white" />
+            ) : (
+              profile?.is_subscribed && profile.subscription_tier === selectedPlan 
+                ? (profile.subscription_status === 'trialing' 
+                    ? `${getDaysRemaining(profile.subscription_end_at)} DAYS LEFT` 
+                    : 'CURRENT PLAN') 
+                : selectedPlan === 'free' 
+                  ? 'FREE PLAN' 
+                  : 'START MY 1 WEEK FREE'
+            )}
           </button>
         </div>
 
@@ -315,11 +416,13 @@ export const StorePage = () => {
                           const heartsToAdd = isRefill ? 5 : 1;
                           purchaseHeartRefill(item, heartsToAdd, isRefill);
                         }}
-                        disabled={isPurchasing !== null || (profile?.diamonds || 0) < item.cost || ((profile?.hearts || 0) >= 5 && item.title.toLowerCase().includes('refill'))}
+                        disabled={profile?.is_subscribed || isPurchasing !== null || (profile?.diamonds || 0) < item.cost || ((profile?.hearts || 0) >= 5 && item.title.toLowerCase().includes('refill'))}
                         className="flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 border-duo-border rounded-xl hover:bg-white/5 transition-all shadow-[0_2px_0_0_#37464f] active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isPurchasing === item.id ? (
                           <Loader className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                        ) : profile?.is_subscribed ? (
+                          <InfinityIcon className="w-5 h-5 text-duo-blue" />
                         ) : (
                           <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">BUY</span>
                         )}
@@ -385,18 +488,6 @@ export const StorePage = () => {
               
               {/* Success Message */}
               <p className="text-duo-gray font-bold text-lg">{successDetails.message}</p>
-              
-              {/* Stats */}
-              <div className="flex items-center gap-8 justify-center w-full py-4 border-y-2 border-duo-border">
-                <div className="flex items-center gap-2">
-                  <img src={hearts} alt="Hearts" className="w-6 h-6 object-contain" />
-                  <span className="text-duo-red font-black text-xl">{successDetails.newHearts}/5</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <img src={diamond} alt="Diamonds" className="w-5 h-5 object-contain" />
-                  <span className="text-duo-red font-black text-xl">-{purchaseCost}</span>
-                </div>
-              </div>
               
               {/* Close Button */}
               <button

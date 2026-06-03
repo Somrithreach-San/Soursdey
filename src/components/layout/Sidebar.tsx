@@ -98,7 +98,14 @@ export const Sidebar = ({
                   alt={label}
                   className="w-6 h-6 object-contain"
                 />
-                <span>{label}</span>
+                <div className="flex items-center gap-2">
+                  <span>{label}</span>
+                  {label === 'Profile' && userProfile?.is_subscribed && (
+                    <div className="bg-duo-green text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase text-white shadow-[0_2px_0_0_#46a302]">
+                      PRO
+                    </div>
+                  )}
+                </div>
               </a>
             )
           })}
@@ -141,9 +148,16 @@ export const Sidebar = ({
                   )}
                 />
               </div>
-              {isActive && (
-                <div className="absolute -top-[2px] left-1/2 -translate-x-1/2 w-8 h-1 bg-duo-green rounded-full shadow-[0_0_8px_rgba(88,204,2,0.5)]" />
-              )}
+              <div className="flex flex-col items-center">
+                {isActive && (
+                  <div className="absolute -top-[2px] left-1/2 -translate-x-1/2 w-8 h-1 bg-duo-green rounded-full shadow-[0_0_8px_rgba(88,204,2,0.5)]" />
+                )}
+                {label === 'Profile' && userProfile?.is_subscribed && (
+                  <div className="absolute -top-1 -right-1 bg-duo-green text-[8px] font-black px-1 py-0.5 rounded-md uppercase text-white shadow-[0_1px_0_0_#46a302] z-10">
+                    PRO
+                  </div>
+                )}
+              </div>
             </button>
           )
         })}

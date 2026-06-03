@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '../ui/Button'
+import { Infinity as InfinityIcon } from 'lucide-react'
 import diamond from '../../assets/diamond.png'
 import hearts from '../../assets/hearts.png'
 import streak from '../../assets/streak.png'
@@ -8,9 +9,11 @@ import { useUser } from '../../contexts'
 import { MAX_HEARTS } from '../../lib/hearts'
 import subscription from '../../assets/subscription.png'
 import { getQuestIcon } from '../../lib/getQuestIcon' // Import the centralized function
+import { cn, getDaysRemaining } from '../../lib/utils'
 
 export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQuests }: { userProfile: any, onStoreClick?: () => void, onQuestsClick?: () => void, hideQuests?: boolean }) => {
   const { quests } = useUser()
+  const daysRemaining = getDaysRemaining(userProfile?.subscription_end_at)
 
   return (
     <div className="w-80 pt-8 px-4 pb-8 sticky top-0 h-screen overflow-y-auto">
@@ -30,35 +33,72 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
         </div>
         <div className="flex items-center gap-1.5 justify-center">
           <img src={hearts} alt="Hearts" className="w-6 h-6 shrink-0 object-contain" />
-          <span className="font-bold text-base text-duo-red">
-            {`${userProfile?.hearts ?? 5}/${MAX_HEARTS}`}
+          <span className={cn(
+            "font-bold text-base",
+            userProfile?.is_subscribed ? "text-duo-blue" : "text-duo-red"
+          )}>
+            {userProfile?.is_subscribed ? (
+              <InfinityIcon className="w-5 h-5" />
+            ) : (
+              `${userProfile?.hearts ?? 5}/${MAX_HEARTS}`
+            )}
           </span>
         </div>
       </div>
 
       {/* Pro Card */}
-      <div className="bg-duo-dark border-[0.5px] border-duo-border rounded-xl p-5 mb-6">
-        <div className="flex justify-between items-start mb-3">
-          <div className="bg-duo-green text-xs font-black px-2 py-1 rounded-md uppercase text-white">
-            PRO
+      {!userProfile?.is_subscribed ? (
+        <div className="bg-duo-dark border-[0.5px] border-duo-border rounded-xl p-5 mb-6">
+          <div className="flex justify-between items-start mb-3">
+            <div className="bg-duo-green text-xs font-black px-2 py-1 rounded-md uppercase text-white shadow-[0_2px_0_0_#46a302]">
+              PRO
+            </div>
+            <div className="w-10 h-10 flex items-center justify-center">
+               <img src={subscription} alt="Pro" className="w-8 h-8 object-contain" />
+            </div>
           </div>
-          <div className="w-10 h-10 flex items-center justify-center">
-             <img src={subscription} alt="Pro" className="w-8 h-8 object-contain" />
-          </div>
+          <h3 className="font-bold text-lg mb-1.5 text-white">Try Pro for free</h3>
+          <p className="text-duo-gray text-sm leading-snug mb-4">
+            No ads, personalized practice, and unlimited Legendary!
+          </p>
+          <Button 
+            variant="primary" 
+            fullWidth 
+            className="py-2.5 text-xs"
+            onClick={onStoreClick}
+          >
+            TRY 1 WEEK FREE
+          </Button>
         </div>
-        <h3 className="font-bold text-lg mb-1.5 text-white">Try Pro for free</h3>
-        <p className="text-duo-gray text-sm leading-snug mb-4">
-          No ads, personalized practice, and unlimited Legendary!
-        </p>
-        <Button 
-          variant="primary" 
-          fullWidth 
-          className="py-2.5 text-xs"
-          onClick={onStoreClick}
-        >
-          TRY 1 WEEKS FREE
-        </Button>
-      </div>
+      ) : (
+        <div className="bg-duo-dark border-[0.5px] border-duo-border rounded-xl p-5 mb-6">
+          <div className="flex justify-between items-start mb-3">
+            <div className="bg-duo-green text-xs font-black px-2 py-1 rounded-md uppercase text-white shadow-[0_2px_0_0_#46a302]">
+              PRO
+            </div>
+            <div className="w-10 h-10 flex items-center justify-center">
+               <img src={subscription} alt="Pro" className="w-8 h-8 object-contain" />
+            </div>
+          </div>
+          <h3 className="font-bold text-lg mb-1.5 text-white tracking-tight">
+            {userProfile?.subscription_status === 'trialing' ? 'Soursdey Pro Trial' : 'Soursdey Pro Active'}
+          </h3>
+          <p className="text-duo-gray text-sm leading-snug mb-4">
+            {userProfile?.subscription_status === 'trialing' 
+              ? `Your free trial is active! ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining.`
+              : 'Enjoy your premium features! No ads and unlimited practice.'}
+          </p>
+          <Button 
+            variant="ghost" 
+            fullWidth 
+            className="py-2.5 text-xs bg-duo-gray/20 text-white border-none shadow-[0_3px_0_0_#37464f] hover:bg-duo-gray/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={onStoreClick}
+            disabled={true}
+          >
+            {userProfile?.subscription_status === 'trialing' ? 'TRIAL ACTIVE' : 'SUBSCRIBED'}
+          </Button>
+        </div>
+      )}
 
       {/* Daily Quests Card - Now displays all quests */}
       {!hideQuests && quests && quests.length > 0 && (

@@ -19,6 +19,7 @@ import {
   removeHearts,
   addXp,
   getUserQuests,
+  updateSubscription,
   type Profile,
   type UserQuest, // Import the new type
 } from '../services'
@@ -48,6 +49,7 @@ interface UserContextType {
   removeUserDiamonds: (amount: number) => Promise<void>
   addUserHearts: (amount: number) => Promise<void>
   removeUserHearts: (amount: number) => Promise<void>
+  updateUserSubscription: (tier: 'pro' | 'family', isTrial?: boolean) => Promise<void>
   claimUserQuestReward: (questId: string) => Promise<void>
   addStreakFreezer: (quantity?: number) => Promise<void>
   addUserXp: (amount: number) => Promise<void>
@@ -390,13 +392,46 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }
 
   const removeUserHearts = async (amount: number) => {
-    if (!userId) return
+    if (!userId || profile?.is_subscribed) return
     try {
       setError(null)
       await removeHearts(userId, amount)
       await refreshProfile()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove hearts')
+      throw err
+    }
+  }
+
+  const updateUserSubscription = async (tier: 'pro' | 'family', isTrial: boolean = true) => {
+    if (!userId) return
+    try {
+      setError(null)
+      
+      // Calculate subscription end date (7 days for trial, 1 month for regular)
+      const endDate = new Date()
+      if (isTrial) {
+        endDate.setDate(endDate.getDate() + 7)
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1)
+      }
+      
+      const update = {
+        is_subscribed: true,
+        subscription_tier: tier,
+        subscription_status: (isTrial ? 'trialing' : 'active') as 'trialing' | 'active',
+        subscription_end_at: endDate.toISOString(),
+        stripe_customer_id: `cus_mock_${Math.random().toString(36).substring(7)}`,
+        stripe_subscription_id: `sub_mock_${Math.random().toString(36).substring(7)}`,
+      }
+      const updatedProfile = await updateSubscription(userId, update)
+      if (updatedProfile) {
+        setProfile(updatedProfile)
+      } else {
+        throw new Error('Database update returned no data. Check if your table schema is correct.')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update subscription')
       throw err
     }
   }
@@ -461,6 +496,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   removeUserDiamonds,
   addUserHearts,
   removeUserHearts,
+  updateUserSubscription,
   claimUserQuestReward,
     addStreakFreezer,
     addUserXp,

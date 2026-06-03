@@ -68,16 +68,21 @@ export const LessonPage = ({
   const startTimeRef = useRef<number>(Date.now())
   const audioRef = useRef<HTMLAudioElement | null>(null)
   
-  const { profile, updateProfile, incrementUserStreak } = useUser()
+  const { profile, updateProfile, incrementUserStreak, removeUserHearts } = useUser()
   const { completeLesson } = useLesson()
   const playLessonCompleteSound = useSound(lessonCompleteSound)
 
+  const deductHeart = async () => {
+    if (profile?.is_subscribed) return
+    await removeUserHearts(1)
+  }
+
   // Check for hearts on mount/profile update
   useEffect(() => {
-    if (profile && profile.hearts === 0 && !isLoading && !isGameOver) {
+    if (profile && profile.hearts === 0 && !profile.is_subscribed && !isLoading && !isGameOver) {
       setIsGameOver(true)
     }
-  }, [profile?.hearts, isLoading, isGameOver])
+  }, [profile?.hearts, profile?.is_subscribed, isLoading, isGameOver])
 
   const currentChallenge = lesson?.challenges?.[currentChallengeIndex]
 
@@ -284,7 +289,7 @@ export const LessonPage = ({
           await recordMistake(profile.id, second.challenge_id, lesson.id)
         }
 
-        if (profile && profile.hearts <= 1) {
+        if (profile && profile.hearts <= 1 && !profile.is_subscribed) {
           await deductHeart()
           setIsGameOver(true)
         } else {
@@ -298,10 +303,25 @@ export const LessonPage = ({
     }
   }
 
-  const deductHeart = async () => {
-    if (!profile || profile.hearts === 0) return
-    const newHearts = Math.max(0, profile.hearts - 1)
-    await updateProfile({ hearts: newHearts })
+  const handleWrongAnswer = async () => {
+    setStatus('wrong')
+    
+    // Pro users don't lose hearts
+    if (!profile?.is_subscribed) {
+      const newHearts = Math.max(0, (profile?.hearts || 0) - 1)
+      await updateProfile({ hearts: newHearts })
+      
+      if (newHearts === 0) {
+        setIsGameOver(true)
+      }
+    }
+    
+    setMistakes(prev => prev + 1)
+    
+    // Record mistake in database
+    if (lesson && currentChallenge && profile) {
+      await recordMistake(profile.id, currentChallenge.id, lesson.id)
+    }
   }
 
   const handleWordBankClick = (option: ChallengeOption) => {
@@ -340,7 +360,7 @@ export const LessonPage = ({
       // Record the mistake
       await recordMistake(profile!.id, currentChallenge.id, lesson.id)
       
-      if (profile && profile.hearts <= 1) {
+      if (profile && profile.hearts <= 1 && !profile.is_subscribed) {
         await deductHeart()
         setIsGameOver(true)
       } else {
@@ -367,7 +387,10 @@ export const LessonPage = ({
     const isLastChallenge = currentChallengeIndex === lesson.challenges.length - 1
     if (isLastChallenge) {
       playLessonCompleteSound()
-      const accuracy = Math.round(((lesson.challenges.length - mistakes) / lesson.challenges.length) * 100)
+      // Accuracy should be based on (correct answers / total attempts) or (total challenges / (total challenges + mistakes))
+      // Standard way: (total challenges / (total challenges + mistakes)) * 100
+      const totalChallenges = lesson.challenges.length
+      const accuracy = Math.max(0, Math.round((totalChallenges / (totalChallenges + mistakes)) * 100))
       
       // Compute actual absolute duration execution delta
       const duration = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000))
@@ -487,9 +510,12 @@ export const LessonPage = ({
           </div>
 
           <div className="flex items-center gap-1.5 md:gap-2">
-            <img src={hearts} alt="Hearts" className="w-6 h-6 md:w-7 md:h-7 object-contain" />
-            <span className="font-bold text-sm md:text-base text-duo-red">
-              {profile?.hearts ?? <InfinityIcon className="w-5 h-5" />}
+            <img src={hearts} alt="Hearts" className="w-6 h-6 md:w-8 md:h-8 shrink-0 object-contain" />
+            <span className={cn(
+              "font-bold text-base md:text-xl",
+              profile?.is_subscribed ? "text-duo-blue" : "text-duo-red"
+            )}>
+              {profile?.is_subscribed ? <InfinityIcon className="w-5 h-5 md:w-6 md:h-6" /> : (profile?.hearts ?? 5)}
             </span>
           </div>
         </header>
