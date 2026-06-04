@@ -70,7 +70,7 @@ export const LoginPage = ({ onSignupClick }: { onSignupClick?: () => void }) => 
   if (view === 'forgot_password') {
     return (
       <div className={cn(
-        "min-h-screen flex items-center justify-center px-4",
+        "h-[100dvh] flex items-center justify-center px-4 fixed inset-0 overflow-hidden",
         theme === 'light' ? "bg-white" : "bg-duo-dark"
       )}>
         <div className="w-full max-w-md relative z-10">
@@ -161,7 +161,7 @@ export const LoginPage = ({ onSignupClick }: { onSignupClick?: () => void }) => 
 
   return (
     <div className={cn(
-      "min-h-screen flex items-center justify-center px-4 relative overflow-hidden",
+      "h-[100dvh] flex items-center justify-center px-4 relative overflow-hidden fixed inset-0",
       theme === 'light' ? "bg-white" : "bg-duo-dark"
     )}>
       <div className="w-full max-w-md relative z-10">

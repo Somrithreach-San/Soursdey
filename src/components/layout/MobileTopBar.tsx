@@ -13,9 +13,10 @@ interface MobileTopBarProps {
   profile: any
   onSettingsClick?: () => void
   onShopClick?: () => void
+  onHeartClick?: () => void
 }
 
-export const MobileTopBar = ({ profile, onSettingsClick, onShopClick }: MobileTopBarProps) => {
+export const MobileTopBar = ({ profile, onSettingsClick, onShopClick, onHeartClick }: MobileTopBarProps) => {
   const { theme } = useTheme()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -55,7 +56,7 @@ export const MobileTopBar = ({ profile, onSettingsClick, onShopClick }: MobileTo
         "lg:hidden shrink-0 w-full transition-colors z-30 sticky top-0",
         theme === 'light' ? "bg-white" : "bg-duo-dark"
       )} ref={dropdownRef}>
-        <div className="flex items-center justify-between px-6 pt-4 pb-2">
+        <div className="flex items-center justify-between px-6 pt-[calc(1rem+env(safe-area-inset-top))] pb-2">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               <img src={streak} alt="Streak" className="w-6 h-6 shrink-0 object-contain" />
@@ -69,7 +70,10 @@ export const MobileTopBar = ({ profile, onSettingsClick, onShopClick }: MobileTo
                 {profile?.diamonds ?? 0}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <button 
+              onClick={onHeartClick}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
               <img src={hearts} alt="Hearts" className="w-6 h-6 shrink-0 object-contain" />
               <span className={cn(
                 "font-black text-base",
@@ -81,7 +85,7 @@ export const MobileTopBar = ({ profile, onSettingsClick, onShopClick }: MobileTo
                   profile?.hearts ?? 5
                 )}
               </span>
-            </div>
+            </button>
           </div>
           <div className="flex items-center gap-2 relative">
             <button 
@@ -94,10 +98,7 @@ export const MobileTopBar = ({ profile, onSettingsClick, onShopClick }: MobileTo
               <img 
                 src={moreIcon} 
                 alt="More" 
-                className={cn(
-                  "w-7 h-7 object-contain transition-opacity",
-                  isDropdownOpen ? "opacity-100" : "opacity-70 group-hover:opacity-100"
-                )} 
+                className="w-7 h-7 object-contain"
               />
             </button>
           </div>
@@ -120,13 +121,13 @@ export const MobileTopBar = ({ profile, onSettingsClick, onShopClick }: MobileTo
                   setIsDropdownOpen(false)
                 }}
                 className={cn(
-                  "w-full py-3 flex items-center gap-4 transition-colors px-2 rounded-xl",
+                  "w-full py-2 flex items-center gap-3 transition-colors px-2 rounded-xl",
                   theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
                 )}
               >
-                <img src={storeIcon} alt="Shop" className="w-7 h-7 object-contain" />
+                <img src={storeIcon} alt="Shop" className="w-5 h-5 object-contain" />
                 <span className={cn(
-                  "font-black uppercase tracking-widest text-base",
+                  "font-black uppercase tracking-widest text-sm",
                   theme === 'light' ? "text-[#4B4B4B]" : "text-white"
                 )}>Shop</span>
               </button>
@@ -136,13 +137,13 @@ export const MobileTopBar = ({ profile, onSettingsClick, onShopClick }: MobileTo
                   setIsDropdownOpen(false)
                 }}
                 className={cn(
-                  "w-full py-3 flex items-center gap-4 transition-colors px-2 rounded-xl",
+                  "w-full py-2 flex items-center gap-3 transition-colors px-2 rounded-xl",
                   theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
                 )}
               >
-                <img src={gearIcon} alt="Settings" className="w-7 h-7 object-contain" />
+                <img src={gearIcon} alt="Settings" className="w-5 h-5 object-contain" />
                 <span className={cn(
-                  "font-black uppercase tracking-widest text-base",
+                  "font-black uppercase tracking-widest text-sm",
                   theme === 'light' ? "text-[#4B4B4B]" : "text-white"
                 )}>Settings</span>
               </button>

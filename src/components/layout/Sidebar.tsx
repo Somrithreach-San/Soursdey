@@ -6,6 +6,7 @@ import leaderboardIcon from '../../assets/leaderboard.png'
 import storeIcon from '../../assets/store.png'
 import questIcon from '../../assets/Quest.png' // Import the correct quest icon
 import gearIcon from '../../assets/gear_icon.png'
+import { ImageWithLoader } from '../ui/ImageWithLoader'
 
 // Import all possible avatars
 import jason from '../../assets/Jason.png'
@@ -105,13 +106,20 @@ export const Sidebar = ({
                   isActive && "active"
                 )}
               >
-                <img 
+                <ImageWithLoader 
                   src={Icon as string} 
                   alt={label}
-                  className="w-6 h-6 object-contain"
+                  className="w-6 h-6"
+                  imgClassName="object-contain"
+                  loaderClassName="w-4 h-4"
                 />
                 <div className="flex items-center gap-2">
                   <span>{label}</span>
+                  {label === 'Profile' && userProfile?.is_subscribed && (
+                    <span className="bg-duo-green text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase text-white shadow-[0_1.5px_0_0_#46a302] leading-none">
+                      PRO
+                    </span>
+                  )}
                 </div>
               </a>
             )
@@ -120,7 +128,7 @@ export const Sidebar = ({
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-18 bg-duo-dark flex items-center justify-around px-2 z-50">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[calc(4.5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-duo-dark flex items-center justify-around px-2 z-50">
         {menuItems.filter(item => item.view !== 'settings' && item.view !== 'shop').map((item) => {
           const { icon: Icon, label, view } = item
           const isActive = currentView === view
@@ -147,14 +155,18 @@ export const Sidebar = ({
                 "p-1.5 rounded-xl transition-all relative",
                 isActive && "bg-duo-green/10"
               )}>
-                <img 
+                <ImageWithLoader 
                   src={Icon as string} 
                   alt={label}
-                  className={cn(
-                    "w-6 h-6 object-contain",
-                    isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"
-                  )}
+                  className="w-6 h-6"
+                  imgClassName="object-contain"
+                  loaderClassName="w-4 h-4"
                 />
+                {label === 'Profile' && userProfile?.is_subscribed && (
+                  <div className="absolute -top-1.5 -right-1 bg-duo-green text-[8px] font-black px-1 py-0.5 rounded shadow-[0_1px_0_0_#46a302] text-white leading-none uppercase">
+                    PRO
+                  </div>
+                )}
               </div>
               <div className="flex flex-col items-center">
                 {isActive && (

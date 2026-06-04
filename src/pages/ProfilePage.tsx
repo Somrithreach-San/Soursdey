@@ -8,6 +8,7 @@ import streakOutlineAsset from '../assets/streak_outline.png'
 import { AvatarSelectionModal } from '../components/modals/AvatarSelectionModal'
 import { UsernameEditModal } from '../components/modals/UsernameEditModal'
 import { Loader } from '../components/ui/Loader'
+import { ImageWithLoader } from '../components/ui/ImageWithLoader'
 import type { User } from '@supabase/supabase-js'
 
 // Import all possible avatars
@@ -32,7 +33,7 @@ const getAvatar = (avatarUrl: string) => {
   }
 };
 
-const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'completed' | 'warning' | 'inactive' | 'future' | 'empty', isCurrent?: boolean }) => {
+const CalendarDay = ({ day, status }: { day?: number, status: 'completed' | 'warning' | 'inactive' | 'future' | 'empty' }) => {
   const { theme } = useTheme()
   if (status === 'empty') return <div className="aspect-square" />
 
@@ -54,7 +55,13 @@ const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'comple
         )
       )}>
         {status === 'completed' ? (
-          <img src={streakOutlineAsset} alt="Streak" className="w-[45%] h-[45%] object-contain" />
+          <ImageWithLoader 
+            src={streakOutlineAsset} 
+            alt="Streak" 
+            className="w-[45%] h-[45%]"
+            imgClassName="object-contain"
+            loaderClassName="w-3 h-3"
+          />
         ) : status === 'warning' ? (
           <AlertTriangle className="w-[45%] h-[45%]" />
         ) : (
@@ -65,7 +72,7 @@ const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'comple
   )
 }
 
-const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext, currentMonthIndex }: { month: string, year: number, days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future', isCurrent: boolean }[], startDay: number, onPrev: () => void, onNext: () => void, currentMonthIndex: number }) => {
+const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext, currentMonthIndex }: { month: string, year: number, days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future' }[], startDay: number, onPrev: () => void, onNext: () => void, currentMonthIndex: number }) => {
   const { theme } = useTheme()
   const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
   const emptyDays = Array(startDay).fill(null)
@@ -127,7 +134,6 @@ const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext, currentMon
               key={i} 
               day={d.day} 
               status={d.status} 
-              isCurrent={d.isCurrent}
             />
           ))}
         </div>
@@ -208,7 +214,7 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
   }
 
   const getDaysForMonth = (index: number) => {
-    const days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future', isCurrent: boolean }[] = []
+    const days: { day: number, status: 'completed' | 'warning' | 'inactive' | 'future' }[] = []
     const month = months[index]
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -235,11 +241,7 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
         }
       }
       
-      const isCurrent = month.year === today.getFullYear() && 
-                        month.monthIndex === today.getMonth() && 
-                        i === today.getDate()
-      
-      days.push({ day: i, status, isCurrent })
+      days.push({ day: i, status })
     }
     return days
   }
@@ -291,7 +293,13 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
               theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-[#1a232e] border-white/10"
             )}>
               {userProfile ? (
-                <img src={getAvatar(userProfile.avatar_url)} alt="Profile" className="w-20 h-20 md:w-24 md:h-24 object-contain" />
+                <ImageWithLoader 
+                  src={getAvatar(userProfile.avatar_url)} 
+                  alt="Profile" 
+                  className="w-20 h-20 md:w-24 md:h-24"
+                  imgClassName="object-contain"
+                  loaderClassName="w-8 h-8 md:w-10 md:h-10"
+                />
               ) : (
                 <div className="w-20 h-20 md:w-24 md:h-24 flex items-center justify-center">
                   <Loader className="w-10 h-10 md:w-12 md:h-12" />
@@ -311,7 +319,13 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
       {/* Streak Calendar Section */}
       <section className="mb-12">
         <div className="flex items-center gap-3 mb-5">
-          <img src={streakAsset} alt="Streak" className="w-8 h-8 object-contain" />
+          <ImageWithLoader 
+            src={streakAsset} 
+            alt="Streak" 
+            className="w-8 h-8"
+            imgClassName="object-contain"
+            loaderClassName="w-4 h-4"
+          />
           <h2 className={cn(
             "text-xl font-black tracking-tight uppercase",
             theme === 'light' ? "text-[#4b4b4b]" : "text-white"

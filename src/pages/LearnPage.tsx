@@ -4,6 +4,8 @@ import { useLottie } from 'lottie-react'
 import { cn } from '../lib/utils'
 import { useUser, useLesson, useTheme } from '../contexts'
 import { type Lesson } from '../services'
+import { calculateHeartsToRegenerate } from '../lib/hearts'
+import { HeartStatusModal } from '../components/modals/HeartStatusModal'
 import { Loader } from '../components/ui/Loader'
 import characterAnimation1 from '../assets/peacock.json'
 import characterAnimation2 from '../assets/chimpanzee.json'
@@ -27,6 +29,7 @@ const UnitDivider = ({ title }: { title: string }) => (
 )
 
 const CharacterAnimation = ({ animationData, speed = 0.5 }: { animationData: unknown, speed?: number }) => {
+  const [isReady, setIsReady] = useState(false)
   const options = useMemo(() => ({
     animationData,
     loop: true,
@@ -40,12 +43,25 @@ const CharacterAnimation = ({ animationData, speed = 0.5 }: { animationData: unk
 
   useEffect(() => {
     lottieObj.setSpeed(speed)
+    // Small delay to ensure lottie is actually rendered
+    const timer = setTimeout(() => setIsReady(true), 100)
+    return () => clearTimeout(timer)
   }, [lottieObj, speed])
 
-  return <div className="w-full h-full will-change-transform">{lottieObj.View}</div>
+  return (
+    <div className="w-full h-full relative flex items-center justify-center">
+      {!isReady && <Loader className="w-6 h-6 absolute" />}
+      <div className={cn(
+        "w-full h-full will-change-transform transition-opacity duration-300",
+        isReady ? "opacity-100" : "opacity-0"
+      )}>
+        {lottieObj.View}
+      </div>
+    </div>
+  )
 }
 
-export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string) => void }) => {
+export const LearnPage = ({ onStartLesson, onShopClick }: { onStartLesson?: (lessonId: string) => void, onShopClick?: () => void }) => {
   const { theme } = useTheme()
   const { 
     units, 
@@ -56,11 +72,14 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
     fetchLessons,
     fetchLessonProgress
   } = useLesson()
-  const { profile } = useUser()
+  const { profile, refreshProfile } = useUser()
   const isLoading = loadingStates.units
   const [activeUnit, setActiveUnit] = useState<any>(null)
+  const [isNoHeartsModalOpen, setIsNoHeartsModalOpen] = useState(false)
   const unitRefs = useRef<{[key: string]: HTMLDivElement | null}>({})
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const activeUnitIdRef = useRef<string | null>(null)
 
   const playAudio = (audioSrc: string) => {
     if (audioRef.current) {
@@ -151,7 +170,9 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
     if (units && units.length > 0 && !activeUnit) {
       const firstUnit = units[0];
       const colors = defaultColorSchemes[firstUnit.unit.toString()] || defaultColorSchemes['1'];
-      setActiveUnit({ ...firstUnit, ...colors, steps: [] });
+      const initialUnit = { ...firstUnit, ...colors, steps: [] };
+      setActiveUnit(initialUnit);
+      activeUnitIdRef.current = initialUnit.id;
     }
   }, [units, activeUnit]);
 
@@ -166,19 +187,21 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
           const topMostUnitId = intersecting[0].target.id;
 
           // Only update state if the active unit has changed to prevent flickering
-          if (activeUnit?.id !== topMostUnitId) {
+          if (activeUnitIdRef.current !== topMostUnitId) {
             const unit = units?.find((u) => u.id === topMostUnitId);
             if (unit) {
               const section = unitToSectionMap[unit.id] || unit.section;
               const colors = defaultColorSchemes[unit.unit.toString()] || defaultColorSchemes['1'];
               setActiveUnit({ ...unit, section, ...colors, steps: [] });
+              activeUnitIdRef.current = topMostUnitId;
             }
           }
         }
       },
       {
-        threshold: 0.1, // A single, small threshold is more stable
-        rootMargin: '-80px 0px -75% 0px', // Observe a smaller band at the top of the viewport
+        root: scrollContainerRef.current,
+        threshold: 0,
+        rootMargin: '-10% 0px -85% 0px', // More reliable margin for catching the top unit
       }
     );
 
@@ -187,7 +210,7 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
     });
 
     return () => observer.disconnect();
-  }, [units, activeUnit, unitToSectionMap]);
+  }, [units, unitToSectionMap]);
 
   if (isLoading) {
     return (
@@ -236,7 +259,7 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
       </div>
 
       {/* Scrollable Path Area */}
-      <div className="flex-1 w-full overflow-y-auto pb-32 lg:pb-24 scrollbar-hide">
+      <div ref={scrollContainerRef} className="flex-1 w-full overflow-y-auto pb-12 lg:pb-16 scrollbar-hide">
         {units.map((unit, unitIdx) => {
           const colors = defaultColorSchemes[unit.unit.toString()] || defaultColorSchemes['1']
           const unitWithColors = { ...unit, ...colors, steps: [] }
@@ -293,17 +316,17 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
                       <div className="relative group">
                         {/* Character Animations */}
                         {unitIdx === 0 && index === 1 && (
-                          <div className="absolute left-28 -top-16 w-40 h-40 pointer-events-none z-0 hidden md:block" style={{ willChange: 'auto' }}>
+                          <div className="absolute left-24 md:left-48 -top-4 md:-top-6 w-24 h-24 md:w-40 md:h-40 pointer-events-none z-0" style={{ willChange: 'auto' }}>
                             <CharacterAnimation animationData={characterAnimation1} speed={0.8} />
                           </div>
                         )}
                         {unitIdx === 1 && index === 3 && (
-                          <div className="absolute right-32 -top-20 w-44 h-44 pointer-events-none z-0 scale-x-[-1] hidden md:block">
+                          <div className="absolute right-28 md:right-52 -top-8 md:-top-10 w-28 h-28 md:w-44 md:h-44 pointer-events-none z-0 scale-x-[-1]">
                             <CharacterAnimation animationData={characterAnimation2} />
                           </div>
                         )}
                         {unitIdx === 2 && index === 1 && (
-                          <div className="absolute left-28 -top-20 w-44 h-44 pointer-events-none z-0 hidden md:block">
+                          <div className="absolute left-24 md:left-48 -top-8 md:-top-10 w-28 h-28 md:w-44 md:h-44 pointer-events-none z-0">
                             <CharacterAnimation animationData={characterAnimation3} />
                           </div>
                         )}
@@ -316,10 +339,20 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
                         
                         {/* Button Face */}
                         <button 
-                          onClick={() => {
+                          onClick={async () => {
                             if (isLocked) return
-                            if (profile && profile.hearts === 0) {
-                              alert("You have no hearts left. Please refill in the store to continue.");
+                            if (profile && profile.hearts === 0 && !profile.is_subscribed) {
+                              // Double check if hearts should have regenerated by now
+                              const { heartsToAdd } = calculateHeartsToRegenerate(profile.hearts, profile.last_heart_update)
+                              if (heartsToAdd > 0) {
+                                await refreshProfile()
+                                // After refresh, check again. If still 0, show modal.
+                                // Note: profile from context might not be updated immediately in this scope,
+                                // but the UI will re-render and the next click will work.
+                                // To be safe, we can just return and let the user click again with updated UI.
+                                return
+                              }
+                              setIsNoHeartsModalOpen(true)
                               return;
                             }
                             if (lesson.audio_src) {
@@ -359,12 +392,19 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
         })}
 
         {/* Coming Soon Section */}
-        <div className="my-10 md:my-12 text-center">
+        <div className="mt-8 mb-12 md:mt-10 md:mb-16 text-center">
           <h3 className="text-lg font-bold uppercase tracking-wider text-duo-gray opacity-50">
             Coming Soon!
           </h3>
         </div>
       </div>
+
+      <HeartStatusModal 
+        isOpen={isNoHeartsModalOpen} 
+        onClose={() => setIsNoHeartsModalOpen(false)}
+        onShopClick={onShopClick}
+        profile={profile}
+      />
 
       <audio ref={audioRef} />
     </div>

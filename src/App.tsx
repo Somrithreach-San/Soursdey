@@ -22,6 +22,7 @@ import { useUser } from './contexts'
 import { supabase } from './lib/supabase'
 import { Loader } from './components/ui/Loader'
 import { ScrollToTop } from './components/ui/ScrollToTop'
+import { HeartStatusModal } from './components/modals/HeartStatusModal'
 import { type Challenge, type Lesson } from './services'
 
 function App() {
@@ -31,6 +32,8 @@ function App() {
   const [userProgress, setUserProgress] = useState<any[]>([])
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
   const [currentLessonData, setCurrentLessonData] = useState<{ lesson: Lesson; challenges: Challenge[] } | null>(null)
+  const [scrollToHearts, setScrollToHearts] = useState(false)
+  const [isHeartModalOpen, setIsHeartModalOpen] = useState(false)
   const [lessonCompleteParams, setLessonCompleteParams] = useState<{ 
     perfect: boolean; 
     accuracy: number; 
@@ -43,6 +46,10 @@ function App() {
   // Reset scroll position to top whenever the view changes
   useEffect(() => {
     window.scrollTo(0, 0);
+    // Reset scrollToHearts when view changes, unless we just set it
+    if (view !== 'shop') {
+      setScrollToHearts(false)
+    }
   }, [view]);
 
   useEffect(() => {
@@ -229,8 +236,19 @@ function App() {
           profile={profile} 
           onSettingsClick={() => setView('settings')}
           onShopClick={() => setView('shop')}
+          onHeartClick={() => setIsHeartModalOpen(true)}
         />
       )}
+
+      <HeartStatusModal 
+        isOpen={isHeartModalOpen}
+        onClose={() => setIsHeartModalOpen(false)}
+        onShopClick={() => {
+          setScrollToHearts(true)
+          setView('shop')
+        }}
+        profile={profile}
+      />
       
       {view === 'lesson' ? (
         <LessonPage 
@@ -257,10 +275,26 @@ function App() {
             "w-full transition-all duration-500 overflow-x-hidden",
             view === 'shop' ? "max-w-5xl" : "max-w-160"
           )}>
-            {view === 'learn' && <LearnPage onStartLesson={handleStartLesson} />}
-            {view === 'shop' && <StorePage />}
+            {view === 'learn' && (
+              <LearnPage 
+                onStartLesson={handleStartLesson} 
+                onShopClick={() => {
+                  setScrollToHearts(true)
+                  setView('shop')
+                }} 
+              />
+            )}
+            {view === 'shop' && <StorePage initialScrollToHearts={scrollToHearts} />}
             {view === 'letters' && <LettersPage />}
-            {view === 'practice' && <PracticePage onStartLesson={handleStartReviewLesson} />}
+            {view === 'practice' && (
+              <PracticePage 
+                onStartLesson={handleStartReviewLesson} 
+                onShopClick={() => {
+                  setScrollToHearts(true)
+                  setView('shop')
+                }} 
+              />
+            )}
             {view === 'quests' && <QuestsPage />}
             {view === 'leaderboard' && <LeaderboardPage />}
             {view === 'settings' && <SettingsPage />}
@@ -282,6 +316,7 @@ function App() {
                 onStoreClick={() => setView('shop')}
                 onQuestsClick={() => setView('quests')}
                 hideQuests={view === 'quests'}
+                onHeartClick={() => setIsHeartModalOpen(true)}
               />
             </div>
           )}

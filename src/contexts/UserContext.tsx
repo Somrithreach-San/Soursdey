@@ -53,6 +53,7 @@ interface UserContextType {
   claimUserQuestReward: (questId: string) => Promise<void>
   addStreakFreezer: (quantity?: number) => Promise<void>
   addUserXp: (amount: number) => Promise<void>
+  addUserXpBoost: (durationInHours: number) => Promise<void>
   resetPassword: (email: string) => Promise<void>
 }
 
@@ -344,60 +345,108 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }
 
   const addUserXp = async (amount: number) => {
-    if (!userId) return
+    if (!userId || !profile) return
+    
+    // Optimistic UI update
+    const previousProfile = profile
+    setProfile({ ...profile, xp: (profile.xp || 0) + amount })
+
     try {
       setError(null)
       await addXp(userId, amount)
-      await refreshProfile()
     } catch (err) {
+      setProfile(previousProfile)
       setError(err instanceof Error ? err.message : 'Failed to add XP')
       throw err
     }
   }
 
-  const addUserDiamonds = async (amount: number) => {
+  const addUserXpBoost = async (durationInHours: number = 1) => {
     if (!userId) return
     try {
       setError(null)
-      await addDiamonds(userId, amount)
-      await refreshProfile()
+      
+      const boostEnd = new Date()
+      boostEnd.setHours(boostEnd.getHours() + durationInHours)
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ xp_boost_end_at: boostEnd.toISOString() })
+        .eq('id', userId)
+        .select()
+        .single()
+        
+      if (error) throw error
+      if (data) setProfile(data)
     } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add XP boost')
+      throw err
+    }
+  }
+
+  const addUserDiamonds = async (amount: number) => {
+    if (!userId || !profile) return
+    
+    // Optimistic UI update
+    const previousProfile = profile
+    setProfile({ ...profile, diamonds: (profile.diamonds || 0) + amount })
+
+    try {
+      setError(null)
+      await addDiamonds(userId, amount)
+    } catch (err) {
+      setProfile(previousProfile)
       setError(err instanceof Error ? err.message : 'Failed to add diamonds')
       throw err
     }
   }
 
   const removeUserDiamonds = async (amount: number) => {
-    if (!userId) return
+    if (!userId || !profile) return
+    
+    // Optimistic UI update
+    const previousProfile = profile
+    setProfile({ ...profile, diamonds: Math.max(0, (profile.diamonds || 0) - amount) })
+
     try {
       setError(null)
       await removeDiamonds(userId, amount)
-      await refreshProfile()
     } catch (err) {
+      setProfile(previousProfile)
       setError(err instanceof Error ? err.message : 'Failed to remove diamonds')
       throw err
     }
   }
 
   const addUserHearts = async (amount: number) => {
-    if (!userId) return
+    if (!userId || !profile) return
+    
+    // Optimistic UI update
+    const previousProfile = profile
+    setProfile({ ...profile, hearts: Math.min(5, (profile.hearts || 0) + amount) })
+
     try {
       setError(null)
       await addHearts(userId, amount)
-      await refreshProfile()
     } catch (err) {
+      setProfile(previousProfile)
       setError(err instanceof Error ? err.message : 'Failed to add hearts')
       throw err
     }
   }
 
   const removeUserHearts = async (amount: number) => {
-    if (!userId || profile?.is_subscribed) return
+    if (!userId || !profile || profile.is_subscribed) return
+    
+    // Optimistic UI update
+    const previousProfile = profile
+    setProfile({ ...profile, hearts: Math.max(0, (profile.hearts || 0) - amount) })
+
     try {
       setError(null)
       await removeHearts(userId, amount)
-      await refreshProfile()
     } catch (err) {
+      setProfile(previousProfile)
       setError(err instanceof Error ? err.message : 'Failed to remove hearts')
       throw err
     }
@@ -500,6 +549,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   claimUserQuestReward,
     addStreakFreezer,
     addUserXp,
+    addUserXpBoost,
     resetPassword,
   }
 

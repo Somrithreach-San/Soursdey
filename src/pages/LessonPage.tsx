@@ -3,14 +3,10 @@ import { X, Settings, Infinity as InfinityIcon, CheckCircle2 } from 'lucide-reac
 import { cn } from '../lib/utils'
 import { Button } from '../components/ui/Button'
 import { Loader } from '../components/ui/Loader'
+import { ImageWithLoader } from '../components/ui/ImageWithLoader'
 import { supabase } from '../lib/supabase'
 import { useUser, useLesson, useTheme } from '../contexts'
 import hearts from '../assets/hearts.png'
-import diamond from '../assets/diamond.png'
-import streak from '../assets/streak.png'
-import gearIcon from '../assets/gear_icon.png'
-import moreIcon from '../assets/more_icon.png'
-import storeIcon from '../assets/store.png'
 import jason from '../assets/Jason.png'
 import speakerIcon from '../assets/speaker.png'
 import { useSound } from '../hooks/useSound'
@@ -69,8 +65,6 @@ export const LessonPage = ({
   lessonId, 
   lessonData,
   onExit, 
-  onSettingsClick,
-  onShopClick,
   onComplete 
 }: LessonPageProps) => {
   const { theme } = useTheme()
@@ -81,29 +75,6 @@ export const LessonPage = ({
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState(0)
   const [mistakes, setMistakes] = useState(0)
   const [isGameOver, setIsGameOver] = useState(false)
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (isDropdownOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isDropdownOpen])
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const [selectedSequence, setSelectedSequence] = useState<ChallengeOption[]>([])
   const [selectedPair, setSelectedPair] = useState<ChallengeOption[]>([])
@@ -129,6 +100,17 @@ export const LessonPage = ({
       setIsGameOver(true)
     }
   }, [profile?.hearts, profile?.is_subscribed, isLoading, isGameOver])
+
+  // Disable background scroll when game over modal is shown
+  useEffect(() => {
+    if (isGameOver) {
+      const originalStyle = window.getComputedStyle(document.body).overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = originalStyle
+      }
+    }
+  }, [isGameOver])
 
   const currentChallenge = lesson?.challenges?.[currentChallengeIndex]
 
@@ -353,27 +335,6 @@ export const LessonPage = ({
     }
   }
 
-  const handleWrongAnswer = async () => {
-    setStatus('wrong')
-    
-    // Pro users don't lose hearts
-    if (!profile?.is_subscribed) {
-      const newHearts = Math.max(0, (profile?.hearts || 0) - 1)
-      await updateProfile({ hearts: newHearts })
-      
-      if (newHearts === 0) {
-        setIsGameOver(true)
-      }
-    }
-    
-    setMistakes(prev => prev + 1)
-    
-    // Record mistake in database
-    if (lesson && currentChallenge && profile) {
-      await recordMistake(profile.id, currentChallenge.id, lesson.id)
-    }
-  }
-
   const handleWordBankClick = (option: ChallengeOption) => {
     if (status !== 'idle') return
     setSelectedSequence(prev => [...prev, option])
@@ -423,16 +384,6 @@ export const LessonPage = ({
         }
       }
     }
-  }
-
-  const handleSkip = async () => {
-    if (status !== 'idle') return
-    // Record the skip as a mistake
-    if (lesson && currentChallenge) {
-      await recordMistake(profile!.id, currentChallenge.id, lesson.id)
-    }
-    setMistakes(prev => prev + 1)
-    handleContinue()
   }
 
   const handleContinue = async () => {
@@ -536,148 +487,61 @@ export const LessonPage = ({
 
   return (
     <>
-      {/* Dark Overlay for Dropdown */}
-      {isDropdownOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-[110] transition-opacity duration-300"
-          onClick={() => setIsDropdownOpen(false)}
-        />
-      )}
-
       {isGameOver && (
-        <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 z-[120] flex items-center justify-center p-4">
           <div className={cn(
-            "p-8 rounded-2xl text-center border-2 max-w-sm w-full flex flex-col items-center gap-4",
-            theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+            "p-6 rounded-3xl text-center border-2 max-w-[320px] w-full relative flex flex-col items-center gap-5",
+            theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-[#1a232e] border-white/10"
           )}>
-            <div className="w-32 h-32">
+            <button 
+              onClick={onExit}
+              className={cn(
+                "absolute top-3 right-3 p-1 rounded-lg transition-colors",
+                theme === 'light' ? "hover:bg-gray-100 text-gray-400" : "hover:bg-white/5 text-duo-gray"
+              )}
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-20 h-20">
               <LottiePlayer animationData={plantAnimation} loop={true} />
             </div>
-            <h2 className={cn(
-              "text-2xl font-black",
-              theme === 'light' ? "text-[#4B4B4B]" : "text-white"
-            )}>Mistakes help you grow!</h2>
-            <p className="text-duo-gray font-bold">You're out of hearts. Come back tomorrow or refill them in the store.</p>
-            <Button onClick={onExit} className="w-full" variant="primary" size="lg">
-              Exit Lesson
-            </Button>
+            
+            <div className="space-y-1">
+              <h2 className={cn(
+                "text-xl font-black",
+                theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+              )}>Mistakes help you grow!</h2>
+            </div>
+
+            <p className="text-duo-gray font-bold text-sm">You're out of hearts. Come back tomorrow or refill them in the store.</p>
+            
+            <div className="w-full">
+              <Button onClick={onExit} className="w-full py-3 text-sm" variant="primary" size="lg">
+                Exit Lesson
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       <div className={cn(
-        "fixed inset-0 z-[115] flex flex-col h-screen select-none overflow-y-auto",
+        "fixed inset-0 z-[115] flex flex-col h-[100dvh] select-none",
         theme === 'light' ? "bg-white" : "bg-duo-dark"
       )}>
         {/* Header */}
-        <header className="max-w-5xl mx-auto w-full px-4 pt-4 md:pt-10 pb-4 flex flex-col shrink-0" ref={dropdownRef}>
-          {/* Mobile Stats Bar */}
-          <div className="flex md:hidden items-center justify-between px-2 mb-2">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <img src={streak} alt="Streak" className="w-5 h-5 shrink-0 object-contain" />
-                <span className="font-black text-sm text-duo-orange">
-                  {profile?.streak ?? 0}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <img src={diamond} alt="Diamond" className="w-5 h-5 shrink-0 object-contain" />
-                <span className="font-black text-sm text-duo-blue">
-                  {profile?.diamonds ?? 0}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <img src={hearts} alt="Hearts" className="w-5 h-5 shrink-0 object-contain" />
-                <span className={cn(
-                  "font-black text-sm",
-                  profile?.is_subscribed ? "text-duo-blue" : (theme === 'light' ? "text-[#FF4B4B]" : "text-duo-red")
-                )}>
-                  {profile?.is_subscribed ? (
-                    <InfinityIcon className="w-4 h-4" strokeWidth={3} />
-                  ) : (
-                    profile?.hearts ?? 5
-                  )}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 relative">
-              <button 
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className={cn(
-                  "p-1.5 rounded-xl transition-all relative group",
-                  isDropdownOpen && (theme === 'light' ? "bg-[#F7F7F7]" : "bg-white/5")
-                )}
-              >
-                <img 
-                  src={moreIcon} 
-                  alt="More" 
-                  className={cn(
-                    "w-7 h-7 object-contain transition-opacity",
-                    isDropdownOpen ? "opacity-100" : "opacity-70 group-hover:opacity-100"
-                  )} 
-                />
-              </button>
-            </div>
-          </div>
-
-          {/* Dropdown Menu Expansion (Mobile Only) */}
-          {isDropdownOpen && (
-            <div className="md:hidden w-full px-2 pb-4 flex flex-col items-center">
-              {/* Caret pointing up */}
-              <div className="w-full flex justify-end pr-2 -mt-1 mb-2">
-                  <div className={cn(
-                    "w-3 h-3 border-l-2 border-t-2 rotate-45",
-                    theme === 'light' ? "border-[#E5E5E5]" : "border-[#37464f]"
-                  )} />
-              </div>
-              
-              <button 
-                  onClick={() => {
-                    onShopClick?.()
-                    setIsDropdownOpen(false)
-                  }}
-                  className={cn(
-                    "w-full py-3 flex items-center gap-4 transition-colors px-2 rounded-xl",
-                    theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
-                  )}
-                >
-                  <img src={storeIcon} alt="Shop" className="w-7 h-7 object-contain" />
-                  <span className={cn(
-                    "font-black uppercase tracking-widest text-base",
-                    theme === 'light' ? "text-[#4B4B4B]" : "text-white"
-                  )}>Shop</span>
-                </button>
-
-              <button 
-                  onClick={() => {
-                    onSettingsClick?.()
-                    setIsDropdownOpen(false)
-                  }}
-                  className={cn(
-                    "w-full py-3 flex items-center gap-4 transition-colors px-2 rounded-xl",
-                    theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
-                  )}
-                >
-                  <img src={gearIcon} alt="Settings" className="w-7 h-7 object-contain" />
-                  <span className={cn(
-                    "font-black uppercase tracking-widest text-base",
-                    theme === 'light' ? "text-[#4B4B4B]" : "text-white"
-                  )}>Settings</span>
-                </button>
-            </div>
-          )}
-
+        <header className="max-w-5xl mx-auto w-full px-4 pt-[calc(1rem+env(safe-area-inset-top))] md:pt-10 pb-4 flex flex-col shrink-0">
           <div className="flex items-center gap-3 md:gap-4 w-full px-2">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={onExit} className={cn(
-                "text-duo-gray transition-colors",
-                theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white"
+                "transition-colors",
+                theme === 'light' ? "text-[#4B4B4B]" : "text-white"
               )}>
                 <X className="w-6 h-6 md:w-7 md:h-7" strokeWidth={2.5} />
               </button>
               <button className={cn(
-                "text-duo-gray transition-colors hidden sm:block",
-                theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white"
+                "transition-colors hidden sm:block",
+                theme === 'light' ? "text-[#4B4B4B]" : "text-white"
               )}>
                 <Settings className="w-6 h-6" />
               </button>
@@ -695,11 +559,17 @@ export const LessonPage = ({
               </div>
             </div>
 
-            <div className="hidden md:flex items-center gap-1.5 md:gap-2">
-              <img src={hearts} alt="Hearts" className="w-6 h-6 md:w-8 md:h-8 shrink-0 object-contain" />
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <ImageWithLoader 
+                src={hearts} 
+                alt="Hearts" 
+                className="w-6 h-6 md:w-8 md:h-8"
+                imgClassName="object-contain"
+                loaderClassName="w-3 h-3 md:w-4 md:h-4"
+              />
               <span className={cn(
                 "font-bold text-base md:text-xl",
-                profile?.is_subscribed ? "text-duo-blue" : "text-duo-red"
+                profile?.is_subscribed ? "text-duo-blue" : (theme === 'light' ? "text-[#FF4B4B]" : "text-duo-red")
               )}>
                 {profile?.is_subscribed ? <InfinityIcon className="w-5 h-5 md:w-6 md:h-6" strokeWidth={3} /> : (profile?.hearts ?? 5)}
               </span>
@@ -708,7 +578,7 @@ export const LessonPage = ({
         </header>
 
         {/* Main Content Container */}
-        <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-8 md:pt-24 pb-12 flex flex-col items-center">
+        <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-8 md:pt-24 pb-12 flex flex-col items-center overflow-y-auto">
           <div className="w-full max-w-3xl mx-auto">
             
             {/* Question Header Layout */}
@@ -751,7 +621,13 @@ export const LessonPage = ({
                           : "bg-duo-green border-white/20 shadow-[0_4px_0_0_#1a7f0e] hover:bg-duo-dark-green"
                       )}
                     >
-                      <img src={speakerIcon} alt="Speaker" className="w-10 h-10 md:w-12 md:h-12" />
+                      <ImageWithLoader 
+                        src={speakerIcon} 
+                        alt="Speaker" 
+                        className="w-10 h-10 md:w-12 md:h-12"
+                        imgClassName="object-contain"
+                        loaderClassName="text-white"
+                      />
                     </button>
                   </div>
                 </div>
@@ -764,8 +640,13 @@ export const LessonPage = ({
                   )}
                   <div className="flex items-center gap-4 w-full">
                     <div className="w-16 h-16 md:w-24 md:h-24 relative shrink-0 flex items-center justify-center">
-                    <img src={jason} alt="Character" className="w-full h-full object-contain" />
-                  </div>
+                      <ImageWithLoader 
+                        src={jason} 
+                        alt="Character" 
+                        className="w-full h-full"
+                        imgClassName="object-contain"
+                      />
+                    </div>
                     <div className="w-fit">
                       <SpeechBubble text={targetText} phonetic={currentChallenge.phonetic} />
                     </div>
@@ -780,7 +661,7 @@ export const LessonPage = ({
                 <div className="flex flex-row justify-center gap-2 md:gap-4 w-full max-w-3xl mx-auto mt-6 md:mt-10">
                   {/* Left Column */}
                   <div className="flex flex-col gap-2 w-1/2">
-                    {leftOptions.map((option, index) => {
+                    {leftOptions.map((option) => {
                       const isSelected = selectedPair.some(p => p.id === option.id)
                       const isSolved = solvedPairs.includes(option.pair_id!)
                       const isWrong = wrongPair.some(p => p.id === option.id)
@@ -823,7 +704,7 @@ export const LessonPage = ({
 
                   {/* Right Column */}
                   <div className="flex flex-col gap-2 w-1/2">
-                    {rightOptions.map((option, index) => {
+                    {rightOptions.map((option) => {
                       const isSelected = selectedPair.some(p => p.id === option.id)
                       const isSolved = solvedPairs.includes(option.pair_id!)
                       const isWrong = wrongPair.some(p => p.id === option.id)
@@ -992,7 +873,12 @@ export const LessonPage = ({
                         </div>
                         {option.image_src && (
                           <div className="flex-1 flex items-center justify-center w-full min-h-0 mb-2">
-                            <img src={option.image_src} alt={option.text} className="w-12 h-12 md:w-20 md:h-20 object-contain" />
+                            <ImageWithLoader 
+                              src={option.image_src} 
+                              alt={option.text} 
+                              className="w-12 h-12 md:w-20 md:h-20"
+                              imgClassName="object-contain"
+                            />
                           </div>
                         )}
                         <div className="flex flex-col items-center">
@@ -1094,16 +980,12 @@ export const LessonPage = ({
 
         {/* Footer */}
         <footer className={cn(
-          "border-t-2 py-6 md:py-10 px-4 transition-colors duration-300 shrink-0",
+          "border-t-2 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:py-10 px-4 transition-colors duration-300 shrink-0",
           theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
         )}>
-          <div className="max-w-5xl mx-auto flex flex-col-reverse md:flex-row items-center justify-between gap-4 md:gap-0">
+          <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
             <div className="flex items-center gap-4 w-full md:w-auto">
-              {status === 'idle' ? (
-                <Button variant="ghost" className="flex-1 md:flex-none md:px-16 py-3 md:py-5 text-sm md:text-base" onClick={handleSkip}>
-                  Skip
-                </Button>
-              ) : (
+              {status !== 'idle' && (
                 <div className="flex items-center gap-2 md:gap-5">
                   <div className={cn(
                     "w-10 h-10 md:w-16 md:h-16 rounded-full flex items-center justify-center shrink-0",

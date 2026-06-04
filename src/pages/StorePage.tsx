@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Check, X, Infinity as InfinityIcon, Zap } from 'lucide-react'
+import { Check, X, Infinity as InfinityIcon } from 'lucide-react'
 import { cn, getDaysRemaining } from '../lib/utils'
 import { motion } from 'framer-motion'
 import { useStore, useUser, useTheme } from '../contexts'
@@ -8,6 +8,7 @@ import diamond from '../assets/diamond.png'
 import ice from '../assets/ice.png'
 import xpBoost from '../assets/x2XP.png'
 import { Loader } from '../components/ui/Loader'
+import { ImageWithLoader } from '../components/ui/ImageWithLoader'
 import { createStripeCheckoutSession } from '../services'
 
 interface FeatureListProps {
@@ -53,7 +54,12 @@ const StoreItem = ({ icon, title, description, cost, costIcon, children }: { ico
     )}>
       <div className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center shrink-0">
         {typeof icon === 'string' ? (
-          <img src={icon} alt={title} className="w-10 h-10 md:w-12 md:h-12 object-contain" />
+          <ImageWithLoader 
+            src={icon} 
+            alt={title} 
+            className="w-10 h-10 md:w-12 md:h-12"
+            imgClassName="object-contain"
+          />
         ) : (
           icon
         )}
@@ -67,8 +73,16 @@ const StoreItem = ({ icon, title, description, cost, costIcon, children }: { ico
       </div>
       <div className="flex flex-col items-end gap-2 shrink-0 ml-2">
         <div className="flex items-center gap-1.5">
-          <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">{cost}</span>
-          {costIcon && <img src={costIcon} alt="cost" className="w-3.5 h-3.5 md:w-4 md:h-4 object-contain" />}
+          <span className="font-black text-duo-blue uppercase tracking-widest text-[12px] md:text-base">{cost}</span>
+          {costIcon && (
+            <ImageWithLoader 
+              src={costIcon} 
+              alt="cost" 
+              className="w-4 h-4 md:w-5 md:h-5"
+              imgClassName="object-contain"
+              loaderClassName="w-3 h-3"
+            />
+          )}
         </div>
         {children}
       </div>
@@ -76,7 +90,7 @@ const StoreItem = ({ icon, title, description, cost, costIcon, children }: { ico
   )
 }
 
-export const StorePage = () => {
+export const StorePage = ({ initialScrollToHearts = false }: { initialScrollToHearts?: boolean }) => {
   const { storeItems, fetchStoreItems, buyItem } = useStore()
   const { profile, removeUserDiamonds, addUserHearts, refreshProfile, addStreakFreezer, updateUserSubscription, addUserXpBoost } = useUser()
   const { theme } = useTheme()
@@ -86,6 +100,17 @@ export const StorePage = () => {
   const [isProcessingSubscription, setIsProcessingSubscription] = useState(false)
   const [successDetails, setSuccessDetails] = useState({ title: '', message: '', newHearts: 0, newDiamonds: 0 })
   const [xpBoostTimeLeft, setXpBoostTimeLeft] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (initialScrollToHearts) {
+      setTimeout(() => {
+        const heartsSection = document.getElementById('hearts-section')
+        if (heartsSection) {
+          heartsSection.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 100)
+    }
+  }, [initialScrollToHearts])
 
   useEffect(() => {
     if (!profile?.xp_boost_end_at) {
@@ -321,163 +346,10 @@ export const StorePage = () => {
 
   return (
     <div className="min-h-screen py-12 flex flex-col items-center relative max-w-4xl mx-auto px-4">
-      {/* Subscription Section (Now at Top) */}
-      <div className="w-full mb-16">
-        <div className="flex flex-col items-center w-full">
-          <h1 className={cn(
-            "text-2xl md:text-3xl font-black text-center mb-5 tracking-tight leading-none",
-            theme === 'light' ? "text-[#4b4b4b]" : "text-white"
-          )}>
-            Our Subscription Plan
-          </h1>
-          <p className={cn(
-            "font-bold text-lg mb-12",
-            theme === 'light' ? "text-[#4b4b4b]/80" : "text-white opacity-80"
-          )}>Try 1 week free</p>
-
-          {/* Combined Plans Container */}
-          <div className="w-full flex flex-col md:flex-row items-stretch justify-center gap-4 relative">
-            {/* Free Plan */}
-            <motion.button 
-              onClick={() => setSelectedPlan('free')}
-              initial={false}
-              animate={{
-                backgroundColor: selectedPlan === 'free' 
-                  ? '#ffffff' 
-                  : (theme === 'light' ? '#F7F7F7' : '#1f2937'),
-              }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className={cn(
-                "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-0 transition-all active:translate-y-0.5 active:shadow-none",
-                selectedPlan === 'free' 
-                  ? (theme === 'light' ? "shadow-[0_4px_0_0_#E5E5E5] border-[#E5E5E5]" : "shadow-[0_4px_0_0_#2d3748] border-white")
-                  : (theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#E5E5E5]/30" : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5")
-              )}
-            >
-              <div className={cn(
-                "text-center w-full flex flex-col items-center justify-center py-10",
-                theme === 'light' ? "bg-[#E5E5E5]" : "bg-[#2d3748]"
-              )}>
-                <h3 className={cn("font-black uppercase tracking-widest text-sm", theme === 'light' ? "text-[#4b4b4b]" : "text-white")}>Free</h3>
-                <p className={cn("font-black uppercase tracking-tighter mt-1 text-lg", theme === 'light' ? "text-[#4b4b4b]/70" : "text-white/70")}>$0 / mo</p>
-              </div>
-              <div className="flex-1 flex flex-col items-center justify-center w-full py-9">
-                <FeatureList features={freeFeatures} isSelected={selectedPlan === 'free'} />
-              </div>
-            </motion.button>
-
-            {/* Pro Plan */}
-            <motion.button 
-              onClick={() => {
-                if (!profile?.is_subscribed || profile.subscription_tier !== 'pro') {
-                  setSelectedPlan('pro')
-                }
-              }}
-              initial={false}
-              animate={{
-                backgroundColor: selectedPlan === 'pro' 
-                  ? '#ffffff' 
-                  : (theme === 'light' ? '#F7F7F7' : '#1f2937'),
-              }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className={cn(
-                "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-10 transition-all active:translate-y-0.5 active:shadow-none",
-                selectedPlan === 'pro'
-                  ? (theme === 'light' ? "shadow-brutal-green border-[#58cc02]" : "shadow-brutal-green border-white")
-                  : (theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#E5E5E5]/30" : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"),
-                profile?.is_subscribed && profile.subscription_tier === 'pro' && "cursor-default"
-              )}
-            >
-              <div className="text-center w-full bg-duo-green flex flex-col items-center justify-center py-10">
-                <h3 className="font-black uppercase tracking-widest text-white text-sm">
-                  {profile?.is_subscribed && profile.subscription_tier === 'pro' ? 'Your Plan' : 'Pro'}
-                </h3>
-                <p className="text-white/90 font-black uppercase tracking-tighter mt-1 text-lg">$2.99 / mo</p>
-              </div>
-              <div className="flex-1 flex flex-col items-center justify-center w-full bg-white/0 py-9">
-                <FeatureList features={proFeatures} isSelected={selectedPlan === 'pro'} />
-              </div>
-            </motion.button>
-
-            {/* Pro Family Plan */}
-            <motion.button 
-              onClick={() => {
-                if (!profile?.is_subscribed || profile.subscription_tier !== 'family') {
-                  setSelectedPlan('family')
-                }
-              }}
-              initial={false}
-              animate={{
-                backgroundColor: selectedPlan === 'family' 
-                  ? '#ffffff' 
-                  : (theme === 'light' ? '#F7F7F7' : '#1f2937'),
-              }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className={cn(
-                "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-0 transition-all active:translate-y-0.5 active:shadow-none",
-                selectedPlan === 'family'
-                  ? (theme === 'light' ? "shadow-brutal-blue border-[#1cb0f6]" : "shadow-brutal-blue border-white")
-                  : (theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#E5E5E5]/30" : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"),
-                profile?.is_subscribed && profile.subscription_tier === 'family' && "cursor-default"
-              )}
-            >
-              <div className="text-center w-full bg-[#1cb0f6] flex flex-col items-center justify-center py-10">
-                <h3 className="font-black uppercase tracking-widest text-white text-sm">
-                  {profile?.is_subscribed && profile.subscription_tier === 'family' ? 'Your Plan' : 'Pro Family'}
-                </h3>
-                <p className="text-white/80 font-black uppercase tracking-tighter mt-1 text-lg">$4.99 / mo</p>
-              </div>
-              <div className="flex-1 flex flex-col items-center justify-center w-full py-9">
-                <FeatureList features={familyFeatures} isSelected={selectedPlan === 'family'} />
-              </div>
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <div className="w-full flex justify-center mt-14 mb-8">
-          <button 
-            onClick={handleSubscriptionCheckout}
-            disabled={selectedPlan === 'free' || isProcessingSubscription || (profile?.is_subscribed && profile.subscription_tier === selectedPlan)}
-            className={cn(
-                "text-white font-black text-sm uppercase tracking-widest px-20 py-5 rounded-2xl transition-all min-w-85 flex items-center justify-center gap-3",
-                selectedPlan === 'free' || (profile?.is_subscribed && profile.subscription_tier === selectedPlan)
-                  ? (theme === 'light' ? "bg-[#E5E5E5] text-[#afafaf] cursor-not-allowed shadow-none" : "bg-duo-gray/20 cursor-not-allowed opacity-50 shadow-[0_4px_0_0_#37464f]")
-                  : "bg-duo-green shadow-brutal-green hover:bg-[#61e002] active:translate-y-0.5 active:shadow-none"
-            )}
-          >
-            {isProcessingSubscription ? (
-              <Loader className="w-5 h-5 text-white" />
-            ) : (
-              profile?.is_subscribed && profile.subscription_tier === selectedPlan 
-                ? (profile.subscription_status === 'trialing' 
-                    ? `${getDaysRemaining(profile.subscription_end_at || '')} DAYS LEFT` 
-                    : 'CURRENT PLAN') 
-                : selectedPlan === 'free' 
-                  ? 'FREE PLAN' 
-                  : 'START MY 1 WEEK FREE'
-            )}
-          </button>
-        </div>
-
-        {/* Footer Info */}
-        <div className="w-full text-center mb-8">
-          <p className="text-duo-gray text-sm font-bold leading-relaxed opacity-60">
-            After your free trial, you will be charged for the Pro subscription. 
-            You can cancel at any time in your account settings. 
-            Terms and conditions apply.
-          </p>
-        </div>
-
-        {/* Divider */}
-        <div className={cn(
-          "w-full h-px mb-10",
-          theme === 'light' ? "bg-[#E5E5E5]" : "bg-duo-border"
-        )}></div>
-
+      <div className="w-full">
         {/* Hearts Section */}
         {heartItems.length > 0 && (
-          <section className="mb-10">
+          <section id="hearts-section" className="mb-10">
             <h3 className={cn(
               "font-black uppercase tracking-wider mb-4 opacity-60",
               theme === 'light' ? "text-[#4b4b4b]" : "text-white"
@@ -509,9 +381,9 @@ export const StorePage = () => {
                         {isPurchasing === item.id ? (
                           <Loader className={cn("w-4 h-4 md:w-5 md:h-5", theme === 'light' ? "text-[#4b4b4b]" : "text-white")} />
                         ) : profile?.is_subscribed ? (
-                          <InfinityIcon className="w-5 h-5 text-duo-blue" />
+                          <InfinityIcon className="w-6 h-6 text-duo-blue" />
                         ) : (
-                          <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">BUY</span>
+                          <span className="font-black text-duo-blue uppercase tracking-widest text-[12px] md:text-base">BUY</span>
                         )}
                       </button>
                 </StoreItem>
@@ -522,7 +394,7 @@ export const StorePage = () => {
 
         {/* Power-ups Section */}
         {powerUpItems.length > 0 && (
-          <section className="mb-10">
+          <section className="mb-16">
             <div className="flex justify-between items-center mb-4">
               <h3 className={cn(
                 "font-black uppercase tracking-wider opacity-60",
@@ -569,7 +441,7 @@ export const StorePage = () => {
                         {isPurchasing === item.id ? (
                           <Loader className={cn("w-4 h-4 md:w-5 md:h-5", theme === 'light' ? "text-[#4b4b4b]" : "text-white")} />
                         ) : (
-                          <span className="font-black text-duo-blue uppercase tracking-widest text-[10px] md:text-sm">BUY</span>
+                          <span className="font-black text-duo-blue uppercase tracking-widest text-[12px] md:text-base">BUY</span>
                         )}
                       </button>
                     </StoreItem>
@@ -583,6 +455,161 @@ export const StorePage = () => {
         {heartItems.length === 0 && powerUpItems.length === 0 && (
           <div className="text-center text-duo-gray font-bold py-12">No store items available yet</div>
         )}
+
+        {/* Divider */}
+        <div className={cn(
+          "w-full h-px mb-16",
+          theme === 'light' ? "bg-[#E5E5E5]" : "bg-duo-border"
+        )}></div>
+
+        {/* Subscription Section */}
+        <div className="w-full mb-16">
+          <div className="flex flex-col items-center w-full">
+            <h1 className={cn(
+              "text-2xl md:text-3xl font-black text-center mb-5 tracking-tight leading-none",
+              theme === 'light' ? "text-[#4b4b4b]" : "text-white"
+            )}>
+              Our Subscription Plan
+            </h1>
+            <p className={cn(
+              "font-bold text-lg mb-12",
+              theme === 'light' ? "text-[#4b4b4b]/80" : "text-white opacity-80"
+            )}>Try 1 week free</p>
+
+            {/* Combined Plans Container */}
+            <div className="w-full flex flex-col md:flex-row items-stretch justify-center gap-4 relative">
+              {/* Free Plan */}
+              <motion.button 
+                onClick={() => setSelectedPlan('free')}
+                initial={false}
+                animate={{
+                  backgroundColor: selectedPlan === 'free' 
+                    ? '#ffffff' 
+                    : (theme === 'light' ? '#F7F7F7' : '#1f2937'),
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className={cn(
+                  "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-0 transition-all active:translate-y-0.5 active:shadow-none",
+                  selectedPlan === 'free' 
+                    ? (theme === 'light' ? "shadow-[0_4px_0_0_#E5E5E5] border-[#E5E5E5]" : "shadow-[0_4px_0_0_#2d3748] border-white")
+                    : (theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#E5E5E5]/30" : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5")
+                )}
+              >
+                <div className={cn(
+                  "text-center w-full flex flex-col items-center justify-center py-10",
+                  theme === 'light' ? "bg-[#E5E5E5]" : "bg-[#2d3748]"
+                )}>
+                  <h3 className={cn("font-black uppercase tracking-widest text-sm", theme === 'light' ? "text-[#4b4b4b]" : "text-white")}>Free</h3>
+                  <p className={cn("font-black uppercase tracking-tighter mt-1 text-lg", theme === 'light' ? "text-[#4b4b4b]/70" : "text-white/70")}>$0 / mo</p>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center w-full py-9">
+                  <FeatureList features={freeFeatures} isSelected={selectedPlan === 'free'} />
+                </div>
+              </motion.button>
+
+              {/* Pro Plan */}
+              <motion.button 
+                onClick={() => {
+                  if (!profile?.is_subscribed || profile.subscription_tier !== 'pro') {
+                    setSelectedPlan('pro')
+                  }
+                }}
+                initial={false}
+                animate={{
+                  backgroundColor: selectedPlan === 'pro' 
+                    ? '#ffffff' 
+                    : (theme === 'light' ? '#F7F7F7' : '#1f2937'),
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className={cn(
+                  "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-10 transition-all active:translate-y-0.5 active:shadow-none",
+                  selectedPlan === 'pro'
+                    ? (theme === 'light' ? "shadow-brutal-green border-[#58cc02]" : "shadow-brutal-green border-white")
+                    : (theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#E5E5E5]/30" : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"),
+                  profile?.is_subscribed && profile.subscription_tier === 'pro' && "cursor-default"
+                )}
+              >
+                <div className="text-center w-full bg-duo-green flex flex-col items-center justify-center py-10">
+                  <h3 className="font-black uppercase tracking-widest text-white text-sm">
+                    {profile?.is_subscribed && profile.subscription_tier === 'pro' ? 'Your Plan' : 'Pro'}
+                  </h3>
+                  <p className="text-white/90 font-black uppercase tracking-tighter mt-1 text-lg">$2.99 / mo</p>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center w-full bg-white/0 py-9">
+                  <FeatureList features={proFeatures} isSelected={selectedPlan === 'pro'} />
+                </div>
+              </motion.button>
+
+              {/* Pro Family Plan */}
+              <motion.button 
+                onClick={() => {
+                  if (!profile?.is_subscribed || profile.subscription_tier !== 'family') {
+                    setSelectedPlan('family')
+                  }
+                }}
+                initial={false}
+                animate={{
+                  backgroundColor: selectedPlan === 'family' 
+                    ? '#ffffff' 
+                    : (theme === 'light' ? '#F7F7F7' : '#1f2937'),
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className={cn(
+                  "w-full md:flex-1 overflow-hidden border-2 flex flex-col relative rounded-3xl z-0 transition-all active:translate-y-0.5 active:shadow-none",
+                  selectedPlan === 'family'
+                    ? (theme === 'light' ? "shadow-brutal-blue border-[#1cb0f6]" : "shadow-brutal-blue border-white")
+                    : (theme === 'light' ? "border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5] hover:bg-[#E5E5E5]/30" : "border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"),
+                  profile?.is_subscribed && profile.subscription_tier === 'family' && "cursor-default"
+                )}
+              >
+                <div className="text-center w-full bg-[#1cb0f6] flex flex-col items-center justify-center py-10">
+                  <h3 className="font-black uppercase tracking-widest text-white text-sm">
+                    {profile?.is_subscribed && profile.subscription_tier === 'family' ? 'Your Plan' : 'Pro Family'}
+                  </h3>
+                  <p className="text-white/80 font-black uppercase tracking-tighter mt-1 text-lg">$4.99 / mo</p>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center w-full py-9">
+                  <FeatureList features={familyFeatures} isSelected={selectedPlan === 'family'} />
+                </div>
+              </motion.button>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <div className="w-full flex justify-center mt-14 mb-8">
+            <button 
+              onClick={handleSubscriptionCheckout}
+              disabled={selectedPlan === 'free' || isProcessingSubscription || (profile?.is_subscribed && profile.subscription_tier === selectedPlan)}
+              className={cn(
+                  "text-white font-black text-sm uppercase tracking-widest px-20 py-5 rounded-2xl transition-all min-w-85 flex items-center justify-center gap-3",
+                  selectedPlan === 'free' || (profile?.is_subscribed && profile.subscription_tier === selectedPlan)
+                    ? (theme === 'light' ? "bg-[#E5E5E5] text-[#afafaf] cursor-not-allowed shadow-none" : "bg-duo-gray/20 cursor-not-allowed opacity-50 shadow-[0_4px_0_0_#37464f]")
+                    : "bg-duo-green shadow-brutal-green hover:bg-[#61e002] active:translate-y-0.5 active:shadow-none"
+              )}
+            >
+              {isProcessingSubscription ? (
+                <Loader className="w-5 h-5 text-white" />
+              ) : (
+                profile?.is_subscribed && profile.subscription_tier === selectedPlan 
+                  ? (profile.subscription_status === 'trialing' 
+                      ? `${getDaysRemaining(profile.subscription_end_at || '')} DAYS LEFT` 
+                      : 'CURRENT PLAN') 
+                  : selectedPlan === 'free' 
+                    ? 'FREE PLAN' 
+                    : 'START MY 1 WEEK FREE'
+              )}
+            </button>
+          </div>
+
+          {/* Footer Info */}
+          <div className="w-full text-center mb-8">
+            <p className="text-duo-gray text-sm font-bold leading-relaxed opacity-60">
+              After your free trial, you will be charged for the Pro subscription. 
+              You can cancel at any time in your account settings. 
+              Terms and conditions apply.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Success Modal */}

@@ -21,6 +21,7 @@ export interface Profile {
   subscription_end_at?: string
   stripe_customer_id?: string
   stripe_subscription_id?: string
+  xp_boost_end_at?: string
 }
 
 export interface Quest {

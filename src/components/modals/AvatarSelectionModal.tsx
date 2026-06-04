@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 import { useEffect } from 'react'
 import { cn } from '../../lib/utils'
 import { useTheme } from '../../contexts'
+import { ImageWithLoader } from '../ui/ImageWithLoader'
 
 import lily from '../../assets/Lily.png'
 import jason from '../../assets/Jason.png'
@@ -58,7 +59,13 @@ export const AvatarSelectionModal = ({ isOpen, onClose, onSelect, currentAvatar 
                   : (theme === 'light' ? "border-transparent hover:bg-[#F7F7F7]" : "border-transparent hover:bg-white/10")
               )}
             >
-              <img src={avatar.src} alt={avatar.name} className="w-full h-full object-contain" />
+              <ImageWithLoader 
+                src={avatar.src} 
+                alt={avatar.name} 
+                className="w-full aspect-square"
+                imgClassName="object-contain"
+                loaderClassName="w-6 h-6"
+              />
             </button>
           ))}
         </div>

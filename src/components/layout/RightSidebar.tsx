@@ -11,7 +11,19 @@ import subscription from '../../assets/subscription.png'
 import { getQuestIcon } from '../../lib/getQuestIcon' // Import the centralized function
 import { cn, getDaysRemaining } from '../../lib/utils'
 
-export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQuests }: { userProfile: any, onStoreClick?: () => void, onQuestsClick?: () => void, hideQuests?: boolean }) => {
+export const RightSidebar = ({ 
+  userProfile, 
+  onStoreClick, 
+  onQuestsClick, 
+  hideQuests,
+  onHeartClick
+}: { 
+  userProfile: any, 
+  onStoreClick?: () => void, 
+  onQuestsClick?: () => void, 
+  hideQuests?: boolean,
+  onHeartClick?: () => void
+}) => {
   const { quests } = useUser()
   const { theme } = useTheme()
   const daysRemaining = getDaysRemaining(userProfile?.subscription_end_at)
@@ -32,7 +44,10 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
             {userProfile?.diamonds ?? 0}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 justify-center">
+        <button 
+          onClick={onHeartClick}
+          className="flex items-center gap-1.5 justify-center hover:opacity-80 transition-opacity"
+        >
           <img src={hearts} alt="Hearts" className="w-6 h-6 shrink-0 object-contain" />
           <span className={cn(
             "font-bold text-base",
@@ -44,7 +59,7 @@ export const RightSidebar = ({ userProfile, onStoreClick, onQuestsClick, hideQue
               `${userProfile?.hearts ?? 5}/${MAX_HEARTS}`
             )}
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Pro Card */}
