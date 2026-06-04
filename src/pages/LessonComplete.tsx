@@ -3,6 +3,8 @@ import { Target, Clock, Zap } from 'lucide-react'
 import Lottie from "lottie-react";
 import { motion, animate } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { useTheme } from '../contexts';
+import { cn } from '../lib/utils';
 
 // Fix for Lottie default import issues in some environments
 const LottiePlayer = (Lottie as unknown as { default: typeof Lottie }).default || Lottie;
@@ -33,6 +35,7 @@ interface LessonCompleteProps {
 }
 
 const LessonComplete = ({ route, navigation }: LessonCompleteProps) => {
+  const { theme } = useTheme();
   const { perfect, accuracy, duration, lessonType, xpEarned, gemsEarned } = route.params;
   const [gems, setGems] = useState(0);
   const [xp, setXp] = useState(0);
@@ -79,72 +82,105 @@ const LessonComplete = ({ route, navigation }: LessonCompleteProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-duo-dark z-100 flex flex-col items-center justify-center p-4 text-center -mt-8">
+    <div className={cn(
+      "fixed inset-0 z-100 flex flex-col items-center justify-center p-4 text-center",
+      theme === 'light' ? "bg-white" : "bg-duo-dark"
+    )}>
       
       {/* Animation Container */}
-      <div className="w-56 h-56 -mb-6">
+      <div className="w-40 h-40 md:w-56 md:h-56 -mb-4 md:-mb-6">
         <LottiePlayer animationData={animationData} loop={true} />
       </div>
 
-      <h1 className="text-3xl font-black text-white my-6">
+      <h1 className={cn(
+        "text-2xl md:text-3xl font-black my-4 md:my-6",
+        theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+      )}>
         {title}
       </h1>
 
       {subtitle && (
-        <p className="text-lg text-duo-gray font-bold mb-6">
+        <p className="text-base md:text-lg text-duo-gray font-bold mb-4 md:mb-6">
           {subtitle}
         </p>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-center gap-6 w-full max-w-2xl my-6 flex-wrap">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 w-full max-w-md sm:max-w-3xl my-6 md:my-8">
         {/* ACCURACY Card */}
-        <div className="flex-1 rounded-xl overflow-hidden border-2 border-duo-border min-w-32 shadow-[0_4px_0_0_#37464f]">
-            <div className="bg-green-500 p-3">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Accuracy</h2>
+        <div className={cn(
+          "rounded-xl overflow-hidden border-2 flex flex-col min-h-24 md:min-h-36",
+          theme === 'light' ? "bg-white border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5]" : "bg-duo-dark border-duo-border shadow-[0_4px_0_0_#37464f]"
+        )}>
+            <div className="bg-green-500 py-2 md:py-3 px-2">
+              <h2 className="text-[11px] md:text-sm font-bold text-white uppercase tracking-wider">Accuracy</h2>
             </div>
-            <div className="p-6 bg-duo-dark flex items-center justify-center gap-3">
-              <Target className="w-6 h-6 text-green-500" />
-              <span className="text-2xl font-black text-white">{accuracy}%</span>
+            <div className="flex-1 p-4 md:p-6 flex items-center justify-center gap-2 md:gap-3">
+              <Target className="w-5 h-5 md:w-6 md:h-6 text-green-500" />
+              <span className={cn(
+                "text-xl md:text-2xl font-black",
+                theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+              )}>{accuracy}%</span>
             </div>
           </div>
 
           {/* TIME TAKEN Card */}
-          <div className="flex-1 rounded-xl overflow-hidden border-2 border-duo-border min-w-32 shadow-[0_4px_0_0_#37464f]">
-            <div className="bg-[#1cb0f6] p-3">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Time</h2>
+          <div className={cn(
+            "rounded-xl overflow-hidden border-2 flex flex-col min-h-24 md:min-h-36",
+            theme === 'light' ? "bg-white border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5]" : "bg-duo-dark border-duo-border shadow-[0_4px_0_0_#37464f]"
+          )}>
+            <div className="bg-[#1cb0f6] py-2 md:py-3 px-2">
+              <h2 className="text-[11px] md:text-sm font-bold text-white uppercase tracking-wider">Time</h2>
             </div>
-            <div className="p-6 bg-duo-dark flex items-center justify-center gap-3">
-              <Clock className="w-6 h-6 text-[#1cb0f6]" />
-              <span className="text-2xl font-black text-white">
+            <div className="flex-1 p-4 md:p-6 flex items-center justify-center gap-2 md:gap-3">
+              <Clock className="w-5 h-5 md:w-6 md:h-6 text-[#1cb0f6]" />
+              <span className={cn(
+                "text-xl md:text-2xl font-black",
+                theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+              )}>
                 {formatDuration(duration || 0)}
               </span>
             </div>
           </div>
 
           {/* GEMS EARNED Card */}
-          <div className="flex-1 rounded-xl overflow-hidden border-2 border-duo-border min-w-32 shadow-[0_4px_0_0_#37464f]">
-            <div className="bg-duo-blue p-3">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Gems</h2>
+          <div className={cn(
+            "rounded-xl overflow-hidden border-2 flex flex-col min-h-24 md:min-h-36",
+            theme === 'light' ? "bg-white border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5]" : "bg-duo-dark border-duo-border shadow-[0_4px_0_0_#37464f]"
+          )}>
+            <div className="bg-duo-blue py-2 md:py-3 px-2">
+              <h2 className="text-[11px] md:text-sm font-bold text-white uppercase tracking-wider">Gems</h2>
             </div>
-            <div className="p-6 bg-duo-dark flex items-center justify-center gap-3">
-              <img src={diamond} alt="Diamond" className="w-7 h-7 object-contain" />
-              <motion.span className="text-2xl font-black text-white">+{gems}</motion.span>
+            <div className="flex-1 p-4 md:p-6 flex items-center justify-center gap-2 md:gap-3">
+              <img src={diamond} alt="Diamond" className="w-6 h-6 md:w-7 md:h-7 object-contain" />
+              <motion.span className={cn(
+                "text-xl md:text-2xl font-black",
+                theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+              )}>+{gems}</motion.span>
             </div>
           </div>
 
           {/* XP EARNED Card */}
-          <div className="flex-1 rounded-xl overflow-hidden border-2 border-duo-border min-w-32 shadow-[0_4px_0_0_#37464f]">
-            <div className="bg-[#ffc800] p-3">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">XP</h2>
+          <div className={cn(
+            "rounded-xl overflow-hidden border-2 flex flex-col min-h-24 md:min-h-36",
+            theme === 'light' ? "bg-white border-[#E5E5E5] shadow-[0_4px_0_0_#E5E5E5]" : "bg-duo-dark border-duo-border shadow-[0_4px_0_0_#37464f]"
+          )}>
+            <div className="bg-[#ffc800] py-2 md:py-3 px-2">
+              <h2 className="text-[11px] md:text-sm font-bold text-white uppercase tracking-wider">XP</h2>
             </div>
-            <div className="p-6 bg-duo-dark flex items-center justify-center gap-3">
-              <Zap className="w-7 h-7 text-[#ffc800] fill-[#ffc800]" />
-              <motion.span className="text-2xl font-black text-white">+{xp}</motion.span>
+            <div className="flex-1 p-4 md:p-6 flex items-center justify-center gap-2 md:gap-3">
+              <Zap className="w-6 h-6 md:w-7 md:h-7 text-[#ffc800] fill-[#ffc800]" />
+              <motion.span className={cn(
+                "text-xl md:text-2xl font-black",
+                theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+              )}>+{xp}</motion.span>
             </div>
           </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-duo-dark p-6 border-t-2 border-duo-border">
+      <div className={cn(
+        "fixed bottom-0 left-0 right-0 p-6 border-t-2",
+        theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+      )}>
         <div className="max-w-sm mx-auto flex gap-4">
           {!lessonType && (
             <Button

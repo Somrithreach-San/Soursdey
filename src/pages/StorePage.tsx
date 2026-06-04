@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Check, X, Infinity as InfinityIcon } from 'lucide-react'
+import { Check, X, Infinity as InfinityIcon, Zap } from 'lucide-react'
 import { cn, getDaysRemaining } from '../lib/utils'
 import { motion } from 'framer-motion'
 import { useStore, useUser, useTheme } from '../contexts'
 import hearts from '../assets/hearts.png'
 import diamond from '../assets/diamond.png'
 import ice from '../assets/ice.png'
+import xpBoost from '../assets/x2XP.png'
 import { Loader } from '../components/ui/Loader'
 import { createStripeCheckoutSession } from '../services'
 
@@ -41,7 +42,7 @@ const FeatureList = ({ features, isSelected }: FeatureListProps) => {
   )
 }
 
-const StoreItem = ({ icon, title, description, cost, costIcon, children }: { icon: string, title: string, description: string, cost: string, costIcon?: string, children?: React.ReactNode }) => {
+const StoreItem = ({ icon, title, description, cost, costIcon, children }: { icon: string | React.ReactNode, title: string, description: string, cost: string, costIcon?: string, children?: React.ReactNode }) => {
   const { theme } = useTheme()
   return (
     <div className={cn(
@@ -51,7 +52,11 @@ const StoreItem = ({ icon, title, description, cost, costIcon, children }: { ico
         : "bg-duo-dark border-duo-border shadow-[0_4px_0_0_#37464f] hover:bg-white/5"
     )}>
       <div className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center shrink-0">
-        <img src={icon} alt={title} className="w-10 h-10 md:w-12 md:h-12 object-contain" />
+        {typeof icon === 'string' ? (
+          <img src={icon} alt={title} className="w-10 h-10 md:w-12 md:h-12 object-contain" />
+        ) : (
+          icon
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <h3 className={cn(
@@ -73,13 +78,45 @@ const StoreItem = ({ icon, title, description, cost, costIcon, children }: { ico
 
 export const StorePage = () => {
   const { storeItems, fetchStoreItems, buyItem } = useStore()
-  const { profile, removeUserDiamonds, addUserHearts, refreshProfile, addStreakFreezer, updateUserSubscription } = useUser()
+  const { profile, removeUserDiamonds, addUserHearts, refreshProfile, addStreakFreezer, updateUserSubscription, addUserXpBoost } = useUser()
   const { theme } = useTheme()
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'pro' | 'family'>('pro')
   const [isPurchasing, setIsPurchasing] = useState<string | null>(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [isProcessingSubscription, setIsProcessingSubscription] = useState(false)
   const [successDetails, setSuccessDetails] = useState({ title: '', message: '', newHearts: 0, newDiamonds: 0 })
+  const [xpBoostTimeLeft, setXpBoostTimeLeft] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!profile?.xp_boost_end_at) {
+      setXpBoostTimeLeft(null)
+      return
+    }
+
+    const calculateTimeLeft = () => {
+      const now = new Date()
+      const end = new Date(profile.xp_boost_end_at!)
+      const diff = end.getTime() - now.getTime()
+
+      if (diff <= 0) {
+        setXpBoostTimeLeft(null)
+        return
+      }
+
+      const minutes = Math.ceil(diff / (1000 * 60))
+      if (minutes >= 60) {
+        const hours = Math.floor(minutes / 60)
+        const remainingMinutes = minutes % 60
+        setXpBoostTimeLeft(`${hours}h ${remainingMinutes}m left`)
+      } else {
+        setXpBoostTimeLeft(`${minutes}m left`)
+      }
+    }
+
+    calculateTimeLeft()
+    const interval = setInterval(calculateTimeLeft, 60000)
+    return () => clearInterval(interval)
+  }, [profile?.xp_boost_end_at])
 
   useEffect(() => {
     if (profile?.is_subscribed) {
@@ -234,8 +271,8 @@ export const StorePage = () => {
     }
   }
 
-  // Handle streak freezer purchase
-  const purchaseStreakFreezer = async (item: any) => {
+  // Handle power-up purchases (Streak Freezer, XP Boost, etc.)
+  const purchasePowerUp = async (item: any) => {
     if (!profile || (profile.diamonds || 0) < item.cost) {
       alert('Not enough gems!')
       return
@@ -244,23 +281,33 @@ export const StorePage = () => {
     try {
       // Remove diamonds from user's balance
       await removeUserDiamonds(item.cost)
-      // Add streak freezer to user's profile
-      await addStreakFreezer(1)
-      // Also add to inventory using store system
-      await buyItem(item.id)
+      
+      let message = ''
+      if (item.title.toLowerCase().includes('streak freeze')) {
+        await addStreakFreezer(1)
+        const currentFreezers = profile?.streak_freezer_uses || 0
+        message = `You added 1 Streak Freezer! You now have ${currentFreezers + 1} streak freezer(s).`
+      } else if (item.title.toLowerCase().includes('xp boost')) {
+        await addUserXpBoost(1) // 1 hour
+        message = `2x XP Boost activated for 1 hour!`
+      } else {
+        // Generic power-up handling if needed
+        await buyItem(item.id)
+        message = `You purchased ${item.title}!`
+      }
+
       await refreshProfile()
       
       const newDiamondCount = (profile?.diamonds || 0) - item.cost
-      const currentFreezers = profile?.streak_freezer_uses || 0
       setSuccessDetails({
         title: 'Purchase Successful!',
-        message: `You added 1 Streak Freezer! You now have ${currentFreezers + 1} streak freezer(s).`,
+        message: message,
         newHearts: profile?.hearts || 0,
         newDiamonds: newDiamondCount
       })
       setShowSuccessModal(true)
     } catch (err) {
-      console.error('Streak freezer purchase failed:', err)
+      console.error('Power-up purchase failed:', err)
       alert('Purchase failed, please try again.')
     } finally {
       setIsPurchasing(null)
@@ -480,24 +527,37 @@ export const StorePage = () => {
               <h3 className={cn(
                 "font-black uppercase tracking-wider opacity-60",
                 theme === 'light' ? "text-[#4b4b4b]" : "text-white"
-              )}>Streak Freezer</h3>
-              <span className={cn(
-                "text-sm",
-                theme === 'light' ? "text-[#4b4b4b]/70" : "text-white/70"
-              )}>You have: {profile?.streak_freezer_uses || 0}</span>
+              )}>Power-ups</h3>
+              <div className="flex flex-col items-end gap-1">
+                <span className={cn(
+                  "text-xs font-bold",
+                  theme === 'light' ? "text-[#4b4b4b]/70" : "text-white/70"
+                )}>Streak Freezers: {profile?.streak_freezer_uses || 0}</span>
+                {xpBoostTimeLeft && (
+                  <span className={cn(
+                    "text-xs font-bold",
+                    theme === 'light' ? "text-[#4b4b4b]/70" : "text-white/70"
+                  )}>
+                    XP Booster: {xpBoostTimeLeft}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="space-y-3">
-              {powerUpItems.map(item => (
+              {powerUpItems.map(item => {
+                const isXpBoost = item.title.toLowerCase().includes('xp boost');
+
+                return (
                     <StoreItem 
                       key={item.id}
-                      icon={item.icon_url || ice} 
+                      icon={item.icon_url || (isXpBoost ? xpBoost : ice)} 
                       title={item.title} 
                       description={item.description} 
                       cost={item.cost.toString()} 
                       costIcon={diamond}
                     >
                       <button
-                        onClick={() => purchaseStreakFreezer(item)}
+                        onClick={() => purchasePowerUp(item)}
                         disabled={isPurchasing !== null || (profile?.diamonds || 0) < item.cost}
                         className={cn(
                           "flex items-center justify-center w-20 md:w-24 gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-transparent border-2 rounded-xl transition-all active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed",
@@ -513,7 +573,8 @@ export const StorePage = () => {
                         )}
                       </button>
                     </StoreItem>
-                  ))}
+                );
+              })}
             </div>
           </section>
         )}

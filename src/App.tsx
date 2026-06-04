@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Sidebar } from './components/layout/Sidebar'
 import { RightSidebar } from './components/layout/RightSidebar'
+import { MobileTopBar } from './components/layout/MobileTopBar'
 import { LearnPage } from './pages/LearnPage'
 import { StorePage } from './pages/StorePage'
 import { LettersPage } from './pages/LettersPage'
@@ -39,6 +40,11 @@ function App() {
     gemsEarned?: number;
   }>({ perfect: false, accuracy: 0, duration: 0 });
 
+  // Reset scroll position to top whenever the view changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
+
   useEffect(() => {
     const hash = window.location.hash
     if (hash.includes('type=recovery')) {
@@ -55,19 +61,19 @@ function App() {
     }
   }, [])
 
-  const handleStartLesson = (lessonId: string) => {
+  const handleStartLesson = useCallback((lessonId: string) => {
     setCurrentLessonId(lessonId)
     setCurrentLessonData(null)
     setView('lesson')
-  }
+  }, [])
 
-  const handleStartReviewLesson = (lessonData: { lesson: Lesson; challenges: Challenge[] }) => {
+  const handleStartReviewLesson = useCallback((lessonData: { lesson: Lesson; challenges: Challenge[] }) => {
     setCurrentLessonData(lessonData)
     setCurrentLessonId(null)
     setView('lesson')
-  }
+  }, [])
 
-  const handleLessonComplete = async (result: { perfect: boolean; accuracy: number; duration: number; lessonType?: 'review' | 'mistakes' }) => {
+  const handleLessonComplete = useCallback(async (result: { perfect: boolean; accuracy: number; duration: number; lessonType?: 'review' | 'mistakes' }) => {
     if (user && profile) {
       // Find the 'Complete 1 Lesson' quest from the user's active quests
       const lessonQuest = quests.find(q => q.quests.title === 'Complete 1 Lesson');
@@ -94,20 +100,20 @@ function App() {
       }
     }
 
-    // Calculate XP and Gems for the summary page
-    const xpEarned = result.perfect ? 20 : 10;
-    const gemsEarned = result.perfect ? 30 : 15;
-
-    setView('lesson-complete');
     setLessonCompleteParams({ 
       perfect: result.perfect, 
       accuracy: result.accuracy, 
       duration: result.duration, 
       lessonType: result.lessonType,
-      xpEarned,
-      gemsEarned
+      xpEarned: result.perfect ? 20 : 10,
+      gemsEarned: result.perfect ? 30 : 15
     });
-  }
+    setView('lesson-complete');
+  }, [user, profile, quests, refreshProfile])
+
+  const handleExitLesson = useCallback(() => {
+    setView('learn')
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -200,7 +206,7 @@ function App() {
   // Main app
   return (
     <div className={cn(
-      "bg-duo-dark min-h-screen text-white selection:bg-duo-green selection:text-white",
+      "bg-duo-dark min-h-screen text-[var(--text-main)] selection:bg-duo-green selection:text-white",
       view !== 'lesson' && view !== 'lesson-complete' && "lg:pl-72 pb-20 lg:pb-0"
     )}>
       {view !== 'lesson' && view !== 'lesson-complete' && (
@@ -217,12 +223,22 @@ function App() {
           onSettingsClick={() => setView('settings')}
         />
       )}
+
+      {view !== 'lesson' && view !== 'lesson-complete' && (
+        <MobileTopBar 
+          profile={profile} 
+          onSettingsClick={() => setView('settings')}
+          onShopClick={() => setView('shop')}
+        />
+      )}
       
       {view === 'lesson' ? (
         <LessonPage 
           lessonId={currentLessonId ?? undefined}
           lessonData={currentLessonData ?? undefined}
-          onExit={() => setView('learn')} 
+          onExit={handleExitLesson} 
+          onSettingsClick={() => setView('settings')}
+          onShopClick={() => setView('shop')}
           onComplete={handleLessonComplete} 
         />
       ) : view === 'lesson-complete' ? (
@@ -236,9 +252,9 @@ function App() {
           }} 
         />
       ) : (
-        <div className="flex justify-center gap-12 pt-0">
+        <div className="flex justify-center lg:gap-12 pt-0">
           <main className={cn(
-            "w-full transition-all duration-500",
+            "w-full transition-all duration-500 overflow-x-hidden",
             view === 'shop' ? "max-w-5xl" : "max-w-160"
           )}>
             {view === 'learn' && <LearnPage onStartLesson={handleStartLesson} />}

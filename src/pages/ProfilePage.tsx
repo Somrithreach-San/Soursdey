@@ -34,12 +34,12 @@ const getAvatar = (avatarUrl: string) => {
 
 const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'completed' | 'warning' | 'inactive' | 'future' | 'empty', isCurrent?: boolean }) => {
   const { theme } = useTheme()
-  if (status === 'empty') return <div className="w-11 h-11" />
+  if (status === 'empty') return <div className="aspect-square" />
 
   return (
     <div className="flex flex-col items-center justify-center relative">
       <div className={cn(
-        "w-11 h-11 rounded-xl flex items-center justify-center transition-all relative z-10 border-2",
+        "w-full aspect-square rounded-xl flex items-center justify-center transition-all relative z-10 border-2",
         status === 'completed' && "bg-duo-green border-white/20 text-white shadow-[0_3px_0_0_#1a7f0e]",
         status === 'warning' && "bg-yellow-400 border-black/10 text-black shadow-[0_3px_0_0_rgba(0,0,0,0.3)]",
         status === 'inactive' && (
@@ -51,19 +51,14 @@ const CalendarDay = ({ day, status, isCurrent }: { day?: number, status: 'comple
           theme === 'light'
             ? "bg-[#F7F7F7] border-[#E5E5E5] text-[#4b4b4b] opacity-20"
             : "bg-[#1a232e] border-white/5 text-duo-gray opacity-20"
-        ),
-        isCurrent && (
-          theme === 'light'
-            ? "border-[#4b4b4b] ring-2 ring-[#4b4b4b]/10"
-            : "border-white ring-2 ring-white/10"
         )
       )}>
         {status === 'completed' ? (
-          <img src={streakOutlineAsset} alt="Streak" className="w-5 h-5" />
+          <img src={streakOutlineAsset} alt="Streak" className="w-[45%] h-[45%] object-contain" />
         ) : status === 'warning' ? (
-          <AlertTriangle className="w-5 h-5" />
+          <AlertTriangle className="w-[45%] h-[45%]" />
         ) : (
-          <span className="font-bold text-sm">{day}</span>
+          <span className="font-bold text-xs sm:text-sm">{day}</span>
         )}
       </div>
     </div>
@@ -121,10 +116,10 @@ const MonthCalendar = ({ month, year, days, startDay, onPrev, onNext, currentMon
           <ChevronRight className="w-6 h-6" />
         </button>
       </div>
-      <div className="p-6">
-        <div className="grid grid-cols-7 gap-x-2 gap-y-5 text-center">
+      <div className="p-4 sm:p-6">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
           {weekDays.map(d => (
-            <div key={d} className="text-duo-gray font-black text-[11px] uppercase tracking-[0.2em] mb-1">{d}</div>
+            <div key={d} className="text-duo-gray font-black text-[10px] sm:text-[11px] uppercase tracking-widest mb-1">{d}</div>
           ))}
           {emptyDays.map((_, i) => <div key={`empty-${i}`} />)}
           {days.map((d, i) => (
@@ -259,32 +254,27 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
         "mb-10 pb-10 border-b-2 relative",
         theme === 'light' ? "border-[#E5E5E5]" : "border-duo-border"
       )}>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
+        <div className="flex flex-col-reverse md:flex-row items-center md:items-start justify-between gap-8">
+          <div className="flex-1 w-full text-center md:text-left">
             {userProfile ? (
               <>
-                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <div className="flex items-center justify-center md:justify-start gap-3 mb-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <h1 className={cn(
-                      "text-3xl font-black",
+                      "text-2xl md:text-3xl font-black",
                       theme === 'light' ? "text-[#4b4b4b]" : "text-white"
                     )}>{userProfile.username}</h1>
-                    {userProfile?.is_subscribed && (
-                      <div className="bg-duo-green text-xs font-black px-2 py-1 rounded-md uppercase text-white shadow-[0_2px_0_0_#46a302]">
-                        PRO
-                      </div>
-                    )}
                   </div>
                   <button onClick={() => setIsUsernameModalOpen(true)} className={cn(
                     "p-1 rounded-full transition-colors",
                     theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/10"
                   )}>
-                    <Pencil className="w-5 h-5 text-duo-gray" />
+                    <Pencil className="w-4 h-4 md:w-5 md:h-5 text-duo-gray" />
                   </button>
                 </div>
-                <p className="text-duo-gray font-bold text-lg mb-4">@{user?.email}</p>
-                <div className="flex items-center gap-2 text-duo-gray font-bold">
-                  <Clock className="w-5 h-5" />
+                <p className="text-duo-gray font-bold text-base md:text-lg mb-4 break-all md:break-normal">@{user?.email}</p>
+                <div className="flex items-center justify-center md:justify-start gap-2 text-duo-gray font-bold text-sm md:text-base">
+                  <Clock className="w-4 h-4 md:w-5 md:h-5" />
                   <span>Joined {new Date(userProfile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                 </div>
               </>
@@ -297,22 +287,22 @@ export const ProfilePage: FC<ProfilePageProps> = ({ user, userProfile, onUpdateU
           
           <div className="relative">
             <div className={cn(
-              "w-32 h-32 rounded-3xl border-2 flex items-center justify-center overflow-hidden shadow-[0_8px_0_0_rgba(0,0,0,0.1)]",
+              "w-28 h-28 md:w-32 md:h-32 rounded-3xl border-2 flex items-center justify-center overflow-hidden shadow-[0_8px_0_0_rgba(0,0,0,0.1)]",
               theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-[#1a232e] border-white/10"
             )}>
               {userProfile ? (
-                <img src={getAvatar(userProfile.avatar_url)} alt="Profile" className="w-24 h-24 object-contain" />
+                <img src={getAvatar(userProfile.avatar_url)} alt="Profile" className="w-20 h-20 md:w-24 md:h-24 object-contain" />
               ) : (
-                <div className="w-24 h-24 flex items-center justify-center">
-                  <Loader className="w-12 h-12" />
+                <div className="w-20 h-20 md:w-24 md:h-24 flex items-center justify-center">
+                  <Loader className="w-10 h-10 md:w-12 md:h-12" />
                 </div>
               )}
             </div>
             <button 
               onClick={() => setIsAvatarModalOpen(true)}
-              className="absolute -bottom-2 -right-2 p-3 bg-duo-green rounded-2xl border-2 border-white/20 shadow-[0_4px_0_0_#1a7f0e] hover:bg-duo-dark-green transition-all active:translate-y-0.5 active:shadow-none"
+              className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 p-2.5 md:p-3 bg-duo-green rounded-2xl border-2 border-white/20 shadow-[0_4px_0_0_#1a7f0e] hover:bg-duo-dark-green transition-all active:translate-y-0.5 active:shadow-none"
             >
-              <Pencil className="w-5 h-5 text-white" />
+              <Pencil className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </button>
           </div>
         </div>

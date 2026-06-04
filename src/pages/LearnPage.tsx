@@ -19,7 +19,7 @@ const defaultColorSchemes: { [key: string]: { color: string; darkColor: string; 
 const UnitDivider = ({ title }: { title: string }) => (
   <div className="w-full flex items-center gap-6 my-8 md:my-10">
     <div className="flex-1 h-0.5 bg-duo-border"></div>
-    <span className="text-duo-gray font-bold uppercase tracking-[0.2em] text-sm whitespace-nowrap">
+    <span className="text-duo-gray font-bold uppercase tracking-[0.2em] text-sm whitespace-nowrap font-khmer">
       {title}
     </span>
     <div className="flex-1 h-0.5 bg-duo-border"></div>
@@ -206,17 +206,16 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
   }
 
   return (
-    <div className="flex-1 min-h-screen flex flex-col items-center pb-32 lg:pb-24">
-      {/* Sticky Unit Header */}
+    <div className="flex-1 w-full h-[calc(100dvh-5rem)] lg:h-screen flex flex-col items-center overflow-hidden">
+      {/* Fixed Unit Header */}
       <div className={cn(
-        "sticky top-0 z-50 w-full px-4 pt-4 md:pt-6 pb-2 md:pb-3 border-b-2 lg:border-none transition-colors",
-        theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+        "shrink-0 w-full px-4 pt-4 md:pt-6 pb-2 md:pb-3 transition-colors z-20",
+        theme === 'light' ? "bg-white" : "bg-duo-dark"
       )}>
         <div 
-          className="rounded-2xl p-3 md:p-4 flex items-center justify-between shadow-lg relative overflow-hidden"
+          className="rounded-2xl p-3 md:p-4 flex items-center justify-between relative overflow-hidden"
           style={{ 
-            backgroundColor: activeUnit?.color || '#58cc02',
-            boxShadow: `0 4px 0 0 ${activeUnit?.darkColor || '#46a302'}`
+            backgroundColor: activeUnit?.color || '#58cc02'
           }}
         >
           <div className="flex flex-col gap-1 relative z-10 pl-2 md:pl-4">
@@ -229,139 +228,142 @@ export const LearnPage = ({ onStartLesson }: { onStartLesson?: (lessonId: string
               </h2>
             </div>
 
-            <h1 className="text-base md:text-lg font-black text-white">
+            <h1 className="text-base md:text-lg font-black text-white font-khmer">
               {activeUnit?.title || 'Loading...'}
             </h1>
           </div>
         </div>
       </div>
 
-      {units.map((unit, unitIdx) => {
-        const colors = defaultColorSchemes[unit.unit.toString()] || defaultColorSchemes['1']
-        const unitWithColors = { ...unit, ...colors, steps: [] }
-        const unitLessons = lessons?.filter((l: Lesson) => l.unit_id === unit.id) || []
+      {/* Scrollable Path Area */}
+      <div className="flex-1 w-full overflow-y-auto pb-32 lg:pb-24 scrollbar-hide">
+        {units.map((unit, unitIdx) => {
+          const colors = defaultColorSchemes[unit.unit.toString()] || defaultColorSchemes['1']
+          const unitWithColors = { ...unit, ...colors, steps: [] }
+          const unitLessons = lessons?.filter((l: Lesson) => l.unit_id === unit.id) || []
 
-        return (
-          <div 
-            key={unit.id} 
-            id={unit.id}
-            ref={(el) => { unitRefs.current[unit.id] = el }}
-            className="w-full flex flex-col items-center"
-          >
-            {/* Path Container */}
-            <div className={cn(
-              "flex flex-col items-center gap-16 pb-12",
-              unitIdx === 0 ? "pt-24 md:pt-28" : "pt-0"
-            )}>
-              {[0, 1, 2, 3, 4].map((index) => {
-                const lesson = unitLessons[index]
-                // If there's no lesson at this index, render nothing.
-                if (!lesson) return null
+          return (
+            <div 
+              key={unit.id} 
+              id={unit.id}
+              ref={(el) => { unitRefs.current[unit.id] = el }}
+              className="w-full flex flex-col items-center"
+            >
+              {/* Path Container */}
+              <div className={cn(
+                "flex flex-col items-center gap-16 pb-12",
+                unitIdx === 0 ? "pt-12 md:pt-16" : "pt-0"
+              )}>
+                {[0, 1, 2, 3, 4].map((index) => {
+                  const lesson = unitLessons[index]
+                  // If there's no lesson at this index, render nothing.
+                  if (!lesson) return null
 
-                // Lock all lessons that are not in the active unit.
-                // For the active unit, use the existing progression logic.
-                const isLocked = unit.id !== activeUnitId || (index > 0 && !completedLessons[unitLessons[index - 1]?.id]);
-                const isCurrent = lesson.id === firstUncompletedLessonId;
+                  // Lock all lessons that are not in the active unit.
+                  // For the active unit, use the existing progression logic.
+                  const isLocked = unit.id !== activeUnitId || (index > 0 && !completedLessons[unitLessons[index - 1]?.id]);
+                  const isCurrent = lesson.id === firstUncompletedLessonId;
 
 
-                return (
-                  <div 
-                    key={index} 
-                    className={cn(
-                      "relative flex flex-col items-center",
-                      // keep class-based translations for zero; use inline style for pixel translations to avoid non-canonical Tailwind classes
-                      index === 0 || index === 2 || index === 4 ? 'translate-x-0' : undefined
-                    )}
-                    style={index === 1 ? { transform: 'translateX(-45px)' } : index === 3 ? { transform: 'translateX(45px)' } : undefined}
-                  >
-                    {isCurrent && (
-                      <div className={cn(
-                        "absolute -top-16 z-20 border-2 font-black text-sm px-6 py-3 rounded-xl animate-bounce uppercase tracking-widest whitespace-nowrap shadow-lg",
-                        theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+                  return (
+                    <div 
+                      key={index} 
+                      className={cn(
+                        "relative flex flex-col items-center",
+                        // keep class-based translations for zero; use inline style for pixel translations to avoid non-canonical Tailwind classes
+                        index === 0 || index === 2 || index === 4 ? 'translate-x-0' : undefined
                       )}
-                        style={{ color: unitWithColors.color }}
-                      >
-                        {"START"}
-                      <div className={cn(
-                        "absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-4 border-r-2 border-b-2 rotate-45 z-[-1]",
-                        theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
-                      )} />
-                      </div>
-                    )}
-                    
-                    <div className="relative group">
-                      {/* Character Animations */}
-                      {unitIdx === 0 && index === 1 && (
-                        <div className="absolute left-28 -top-16 w-40 h-40 pointer-events-none z-0" style={{ willChange: 'auto' }}>
-                          <CharacterAnimation animationData={characterAnimation1} speed={0.8} />
-                        </div>
-                      )}
-                      {unitIdx === 1 && index === 3 && (
-                        <div className="absolute right-32 -top-20 w-44 h-44 pointer-events-none z-0 scale-x-[-1]">
-                          <CharacterAnimation animationData={characterAnimation2} />
-                        </div>
-                      )}
-                      {unitIdx === 2 && index === 1 && (
-                        <div className="absolute left-28 -top-20 w-44 h-44 pointer-events-none z-0">
-                          <CharacterAnimation animationData={characterAnimation3} />
-                        </div>
-                      )}
-                      
-                      {/* Shadow/Bottom layer */}
-                      <div 
-                        className="absolute top-2.5 left-0 w-16 h-14 rounded-[100%]"
-                        style={{ backgroundColor: isLocked ? (theme === 'light' ? '#B7B7B7' : '#444') : unitWithColors.darkColor }}
-                      />
-                      
-                      {/* Button Face */}
-                      <button 
-                        onClick={() => {
-                          if (isLocked) return
-                          if (profile && profile.hearts === 0) {
-                            alert("You have no hearts left. Please refill in the store to continue.");
-                            return;
-                          }
-                          if (lesson.audio_src) {
-                            playAudio(lesson.audio_src)
-                          }
-                          onStartLesson?.(lesson.id)
-                        }}
-                        disabled={isLocked}
-                        className={cn(
-                          "w-16 h-14 rounded-[100%] flex items-center justify-center transition-all relative active:translate-y-1 text-white stroke-[4px]",
-                          isLocked && "grayscale opacity-50 cursor-not-allowed"
+                      style={index === 1 ? { transform: 'translateX(-45px)' } : index === 3 ? { transform: 'translateX(45px)' } : undefined}
+                    >
+                      {isCurrent && (
+                        <div className={cn(
+                          "absolute -top-16 z-20 border-2 font-black text-sm px-6 py-3 rounded-xl animate-bounce uppercase tracking-widest whitespace-nowrap shadow-lg",
+                          theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
                         )}
-                        style={{ 
-                          backgroundColor: isLocked ? (theme === 'light' ? '#E5E5E5' : '#888') : unitWithColors.color,
-                          boxShadow: `0 4px 0 0 ${isLocked ? (theme === 'light' ? '#B7B7B7' : '#444') : unitWithColors.darkColor}`
-                        }}
-                      >
-                        {lesson && completedLessons[lesson.id] ? <Check className="w-7 h-7" /> :
-                         index === 0 ? <Trophy className="w-7 h-7" /> :
-                         index === 1 ? <Languages className="w-7 h-7" /> :
-                         index === 2 ? <Star className="w-7 h-7" /> :
-                         index === 3 ? <Languages className="w-7 h-7" /> :
-                         <Trophy className="w-7 h-7" />}
-                      </button>
+                          style={{ color: unitWithColors.color }}
+                        >
+                          {"START"}
+                        <div className={cn(
+                          "absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-4 border-r-2 border-b-2 rotate-45 z-[-1]",
+                          theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+                        )} />
+                        </div>
+                      )}
+                      
+                      <div className="relative group">
+                        {/* Character Animations */}
+                        {unitIdx === 0 && index === 1 && (
+                          <div className="absolute left-28 -top-16 w-40 h-40 pointer-events-none z-0 hidden md:block" style={{ willChange: 'auto' }}>
+                            <CharacterAnimation animationData={characterAnimation1} speed={0.8} />
+                          </div>
+                        )}
+                        {unitIdx === 1 && index === 3 && (
+                          <div className="absolute right-32 -top-20 w-44 h-44 pointer-events-none z-0 scale-x-[-1] hidden md:block">
+                            <CharacterAnimation animationData={characterAnimation2} />
+                          </div>
+                        )}
+                        {unitIdx === 2 && index === 1 && (
+                          <div className="absolute left-28 -top-20 w-44 h-44 pointer-events-none z-0 hidden md:block">
+                            <CharacterAnimation animationData={characterAnimation3} />
+                          </div>
+                        )}
+                        
+                        {/* Shadow/Bottom layer */}
+                        <div 
+                          className="absolute top-2.5 left-0 w-16 h-14 rounded-[100%]"
+                          style={{ backgroundColor: isLocked ? (theme === 'light' ? '#B7B7B7' : '#444') : unitWithColors.darkColor }}
+                        />
+                        
+                        {/* Button Face */}
+                        <button 
+                          onClick={() => {
+                            if (isLocked) return
+                            if (profile && profile.hearts === 0) {
+                              alert("You have no hearts left. Please refill in the store to continue.");
+                              return;
+                            }
+                            if (lesson.audio_src) {
+                              playAudio(lesson.audio_src)
+                            }
+                            onStartLesson?.(lesson.id)
+                          }}
+                          disabled={isLocked}
+                          className={cn(
+                            "w-16 h-14 rounded-[100%] flex items-center justify-center transition-all relative active:translate-y-1 text-white stroke-[4px]",
+                            isLocked && "grayscale opacity-50 cursor-not-allowed"
+                          )}
+                          style={{ 
+                            backgroundColor: isLocked ? (theme === 'light' ? '#E5E5E5' : '#888') : unitWithColors.color,
+                            boxShadow: `0 4px 0 0 ${isLocked ? (theme === 'light' ? '#B7B7B7' : '#444') : unitWithColors.darkColor}`
+                          }}
+                        >
+                          {lesson && completedLessons[lesson.id] ? <Check className="w-7 h-7" /> :
+                           index === 0 ? <Trophy className="w-7 h-7" /> :
+                           index === 1 ? <Languages className="w-7 h-7" /> :
+                           index === 2 ? <Star className="w-7 h-7" /> :
+                           index === 3 ? <Languages className="w-7 h-7" /> :
+                           <Trophy className="w-7 h-7" />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+
+              {/* Unit Divider */}
+              {unitIdx < units.length - 1 && (
+                <UnitDivider title={units[unitIdx + 1].title} />
+              )}
             </div>
+          )
+        })}
 
-            {/* Unit Divider */}
-            {unitIdx < units.length - 1 && (
-              <UnitDivider title={units[unitIdx + 1].title} />
-            )}
-          </div>
-        )
-      })}
-
-      {/* Coming Soon Section */}
-      <div className="my-10 md:my-12 text-center">
-        <h3 className="text-lg font-bold uppercase tracking-wider text-duo-gray opacity-50">
-          Coming Soon!
-        </h3>
+        {/* Coming Soon Section */}
+        <div className="my-10 md:my-12 text-center">
+          <h3 className="text-lg font-bold uppercase tracking-wider text-duo-gray opacity-50">
+            Coming Soon!
+          </h3>
+        </div>
       </div>
 
       <audio ref={audioRef} />

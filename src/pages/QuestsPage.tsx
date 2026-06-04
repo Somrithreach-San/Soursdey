@@ -49,7 +49,7 @@ const QuestCard = ({ userQuest, onClaim }: { userQuest: UserQuest, onClaim: (id:
         <button
           onClick={() => onClaim(userQuest.id)}
           disabled={userQuest.is_claimed}
-          className="w-[630px] bg-duo-green text-white font-black text-xs uppercase tracking-widest px-6 py-2 rounded-xl shadow-[0_4px_0_0_#58a700] hover:bg-[#84d823] active:translate-y-0.5 active:shadow-none transition-all disabled:bg-duo-border disabled:shadow-none disabled:cursor-not-allowed mx-auto"
+          className="w-full bg-duo-green text-white font-black text-xs uppercase tracking-widest px-6 py-2 rounded-xl shadow-[0_4px_0_0_#58a700] hover:bg-[#84d823] active:translate-y-0.5 active:shadow-none transition-all disabled:bg-duo-border disabled:shadow-none disabled:cursor-not-allowed mx-auto"
         >
           {userQuest.is_claimed ? 'Claimed' : 'Claim Reward'}
         </button>

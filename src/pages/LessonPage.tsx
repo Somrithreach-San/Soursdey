@@ -4,8 +4,13 @@ import { cn } from '../lib/utils'
 import { Button } from '../components/ui/Button'
 import { Loader } from '../components/ui/Loader'
 import { supabase } from '../lib/supabase'
-import { useUser, useLesson } from '../contexts'
+import { useUser, useLesson, useTheme } from '../contexts'
 import hearts from '../assets/hearts.png'
+import diamond from '../assets/diamond.png'
+import streak from '../assets/streak.png'
+import gearIcon from '../assets/gear_icon.png'
+import moreIcon from '../assets/more_icon.png'
+import storeIcon from '../assets/store.png'
 import jason from '../assets/Jason.png'
 import speakerIcon from '../assets/speaker.png'
 import { useSound } from '../hooks/useSound'
@@ -27,15 +32,27 @@ interface ChallengeOption {
   pair_id: number | null
 }
 
-const SpeechBubble = ({ text, phonetic }: { text: string; phonetic: string | null }) => (
-  <div className="relative border-2 border-duo-border rounded-2xl p-4 bg-duo-dark max-w-md shadow-sm">
-    {phonetic && (
-      <p className="text-duo-gray text-sm font-bold mb-1">{phonetic}</p>
-    )}
-    <p className="text-white text-xl font-khmer font-medium leading-relaxed">{text}</p>
-    <div className="absolute -left-2.25 top-1/2 -translate-y-1/2 w-4 h-4 bg-duo-dark border-b-2 border-l-2 border-duo-border rotate-45" />
-  </div>
-)
+const SpeechBubble = ({ text, phonetic }: { text: string; phonetic: string | null }) => {
+  const { theme } = useTheme()
+  return (
+    <div className={cn(
+      "relative border-2 rounded-2xl p-3 md:p-4 max-w-md shadow-sm",
+      theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+    )}>
+      {phonetic && (
+        <p className="text-duo-gray text-xs md:text-sm font-bold mb-1">{phonetic}</p>
+      )}
+      <p className={cn(
+        "text-lg md:text-xl font-khmer font-medium leading-relaxed",
+        theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+      )}>{text}</p>
+      <div className={cn(
+        "absolute -left-2.25 top-1/2 -translate-y-1/2 w-4 h-4 border-b-2 border-l-2 rotate-45",
+        theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+      )} />
+    </div>
+  )
+}
 
 const LottiePlayer = (Lottie as unknown as { default: typeof Lottie }).default || Lottie;
 
@@ -43,6 +60,8 @@ interface LessonPageProps {
   lessonId?: string
   lessonData?: { lesson: Lesson; challenges: Challenge[] }
   onExit: () => void
+  onSettingsClick?: () => void
+  onShopClick?: () => void
   onComplete: (result: { perfect: boolean; accuracy: number; duration: number; lessonType?: 'review' | 'mistakes' }) => void
 }
 
@@ -50,8 +69,11 @@ export const LessonPage = ({
   lessonId, 
   lessonData,
   onExit, 
+  onSettingsClick,
+  onShopClick,
   onComplete 
 }: LessonPageProps) => {
+  const { theme } = useTheme()
   const [lesson, setLesson] = useState<Lesson & { challenges: Challenge[] } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedOption, setSelectedOption] = useState<string | null>(null)
@@ -59,6 +81,30 @@ export const LessonPage = ({
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState(0)
   const [mistakes, setMistakes] = useState(0)
   const [isGameOver, setIsGameOver] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (isDropdownOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isDropdownOpen])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const [selectedSequence, setSelectedSequence] = useState<ChallengeOption[]>([])
   const [selectedPair, setSelectedPair] = useState<ChallengeOption[]>([])
   const [wrongPair, setWrongPair] = useState<ChallengeOption[]>([])
@@ -283,21 +329,25 @@ export const LessonPage = ({
         handlePlaySound(wrongSound)
         setWrongPair(newSelectedPair)
         setMistakes(prev => prev + 1)
-        // Record the mistake for both items in the pair
-        if (profile && lesson) {
-          await recordMistake(profile.id, first.challenge_id, lesson.id)
-          await recordMistake(profile.id, second.challenge_id, lesson.id)
-        }
+        
+        // Show wrong state immediately
+        setTimeout(() => {
+          setSelectedPair([])
+          setWrongPair([])
+        }, 800)
 
-        if (profile && profile.hearts <= 1 && !profile.is_subscribed) {
-          await deductHeart()
-          setIsGameOver(true)
-        } else {
-          await deductHeart()
-          setTimeout(() => {
-            setSelectedPair([])
-            setWrongPair([])
-          }, 800)
+        // Record the mistake and deduct heart in background
+        if (profile && lesson) {
+          recordMistake(profile.id, first.challenge_id, lesson.id).catch(console.error)
+          recordMistake(profile.id, second.challenge_id, lesson.id).catch(console.error)
+          
+          if (!profile.is_subscribed) {
+            deductHeart().then(() => {
+              if (profile.hearts <= 1) {
+                setIsGameOver(true)
+              }
+            }).catch(console.error)
+          }
         }
       }
     }
@@ -357,16 +407,20 @@ export const LessonPage = ({
       setStatus('correct')
     } else {
       handlePlaySound(wrongSound)
-      // Record the mistake
-      await recordMistake(profile!.id, currentChallenge.id, lesson.id)
-      
-      if (profile && profile.hearts <= 1 && !profile.is_subscribed) {
-        await deductHeart()
-        setIsGameOver(true)
-      } else {
-        await deductHeart()
-        setStatus('wrong')
-        setMistakes(prev => prev + 1)
+      setStatus('wrong')
+      setMistakes(prev => prev + 1)
+
+      // Record the mistake and deduct heart in background
+      if (profile && lesson) {
+        recordMistake(profile.id, currentChallenge.id, lesson.id).catch(console.error)
+        
+        if (!profile.is_subscribed) {
+          deductHeart().then(() => {
+            if (profile.hearts <= 1) {
+              setIsGameOver(true)
+            }
+          }).catch(console.error)
+        }
       }
     }
   }
@@ -413,7 +467,13 @@ export const LessonPage = ({
       // Add gems: 30 for perfect/flawless, 15 for normal lessons
       const gemsToAdd = mistakes === 0 ? 30 : 15
       // Add XP: 20 for perfect, 10 for normal
-      const xpToAdd = mistakes === 0 ? 20 : 10
+      let xpToAdd = mistakes === 0 ? 20 : 10
+
+      // Check for active XP boost
+      const hasXpBoost = profile?.xp_boost_end_at && new Date(profile.xp_boost_end_at) > new Date();
+      if (hasXpBoost) {
+        xpToAdd *= 2;
+      }
 
       if (profile) {
         await updateProfile({ 
@@ -465,7 +525,10 @@ export const LessonPage = ({
 
   if (isLoading || !lesson || !lesson.challenges.length || !currentChallenge) {
     return (
-      <div className="fixed inset-0 bg-duo-dark z-100 flex items-center justify-center">
+      <div className={cn(
+        "fixed inset-0 z-100 flex items-center justify-center",
+        theme === 'light' ? "bg-white" : "bg-duo-dark"
+      )}>
         <Loader className="w-12 h-12" />
       </div>
     )
@@ -473,13 +536,27 @@ export const LessonPage = ({
 
   return (
     <>
+      {/* Dark Overlay for Dropdown */}
+      {isDropdownOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[110] transition-opacity duration-300"
+          onClick={() => setIsDropdownOpen(false)}
+        />
+      )}
+
       {isGameOver && (
-        <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4">
-          <div className="bg-duo-dark p-8 rounded-2xl text-center border-2 border-duo-border max-w-sm w-full flex flex-col items-center gap-4">
+        <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4">
+          <div className={cn(
+            "p-8 rounded-2xl text-center border-2 max-w-sm w-full flex flex-col items-center gap-4",
+            theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+          )}>
             <div className="w-32 h-32">
               <LottiePlayer animationData={plantAnimation} loop={true} />
             </div>
-            <h2 className="text-2xl font-black text-white">Mistakes help you grow!</h2>
+            <h2 className={cn(
+              "text-2xl font-black",
+              theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+            )}>Mistakes help you grow!</h2>
             <p className="text-duo-gray font-bold">You're out of hearts. Come back tomorrow or refill them in the store.</p>
             <Button onClick={onExit} className="w-full" variant="primary" size="lg">
               Exit Lesson
@@ -488,35 +565,145 @@ export const LessonPage = ({
         </div>
       )}
 
-      <div className="fixed inset-0 bg-duo-dark z-100 flex flex-col h-screen select-none overflow-y-auto">
+      <div className={cn(
+        "fixed inset-0 z-[115] flex flex-col h-screen select-none overflow-y-auto",
+        theme === 'light' ? "bg-white" : "bg-duo-dark"
+      )}>
         {/* Header */}
-        <header className="max-w-5xl mx-auto w-full px-4 pt-6 md:pt-10 pb-4 flex items-center gap-3 md:gap-4 shrink-0">
-          <div className="flex items-center gap-2 md:gap-4">
-            <button onClick={onExit} className="text-duo-gray hover:text-white transition-colors">
-              <X className="w-6 h-6 md:w-7 md:h-7" strokeWidth={2.5} />
-            </button>
-            <button className="text-duo-gray hover:text-white transition-colors hidden sm:block">
-              <Settings className="w-6 h-6" />
-            </button>
-          </div>
-
-          <div className="flex-1 h-3 md:h-4 bg-duo-border rounded-full overflow-hidden">
-            <div
-              className="h-full bg-duo-green transition-all duration-700 relative rounded-full"
-              style={{ width: `${progress}%` }}
-            >
-              <div className="absolute top-1 left-2 right-2 h-1 bg-white/20 rounded-full" />
+        <header className="max-w-5xl mx-auto w-full px-4 pt-4 md:pt-10 pb-4 flex flex-col shrink-0" ref={dropdownRef}>
+          {/* Mobile Stats Bar */}
+          <div className="flex md:hidden items-center justify-between px-2 mb-2">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <img src={streak} alt="Streak" className="w-5 h-5 shrink-0 object-contain" />
+                <span className="font-black text-sm text-duo-orange">
+                  {profile?.streak ?? 0}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <img src={diamond} alt="Diamond" className="w-5 h-5 shrink-0 object-contain" />
+                <span className="font-black text-sm text-duo-blue">
+                  {profile?.diamonds ?? 0}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <img src={hearts} alt="Hearts" className="w-5 h-5 shrink-0 object-contain" />
+                <span className={cn(
+                  "font-black text-sm",
+                  profile?.is_subscribed ? "text-duo-blue" : (theme === 'light' ? "text-[#FF4B4B]" : "text-duo-red")
+                )}>
+                  {profile?.is_subscribed ? (
+                    <InfinityIcon className="w-4 h-4" strokeWidth={3} />
+                  ) : (
+                    profile?.hearts ?? 5
+                  )}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 relative">
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className={cn(
+                  "p-1.5 rounded-xl transition-all relative group",
+                  isDropdownOpen && (theme === 'light' ? "bg-[#F7F7F7]" : "bg-white/5")
+                )}
+              >
+                <img 
+                  src={moreIcon} 
+                  alt="More" 
+                  className={cn(
+                    "w-7 h-7 object-contain transition-opacity",
+                    isDropdownOpen ? "opacity-100" : "opacity-70 group-hover:opacity-100"
+                  )} 
+                />
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <img src={hearts} alt="Hearts" className="w-6 h-6 md:w-8 md:h-8 shrink-0 object-contain" />
-            <span className={cn(
-              "font-bold text-base md:text-xl",
-              profile?.is_subscribed ? "text-duo-blue" : "text-duo-red"
+          {/* Dropdown Menu Expansion (Mobile Only) */}
+          {isDropdownOpen && (
+            <div className="md:hidden w-full px-2 pb-4 flex flex-col items-center">
+              {/* Caret pointing up */}
+              <div className="w-full flex justify-end pr-2 -mt-1 mb-2">
+                  <div className={cn(
+                    "w-3 h-3 border-l-2 border-t-2 rotate-45",
+                    theme === 'light' ? "border-[#E5E5E5]" : "border-[#37464f]"
+                  )} />
+              </div>
+              
+              <button 
+                  onClick={() => {
+                    onShopClick?.()
+                    setIsDropdownOpen(false)
+                  }}
+                  className={cn(
+                    "w-full py-3 flex items-center gap-4 transition-colors px-2 rounded-xl",
+                    theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
+                  )}
+                >
+                  <img src={storeIcon} alt="Shop" className="w-7 h-7 object-contain" />
+                  <span className={cn(
+                    "font-black uppercase tracking-widest text-base",
+                    theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+                  )}>Shop</span>
+                </button>
+
+              <button 
+                  onClick={() => {
+                    onSettingsClick?.()
+                    setIsDropdownOpen(false)
+                  }}
+                  className={cn(
+                    "w-full py-3 flex items-center gap-4 transition-colors px-2 rounded-xl",
+                    theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
+                  )}
+                >
+                  <img src={gearIcon} alt="Settings" className="w-7 h-7 object-contain" />
+                  <span className={cn(
+                    "font-black uppercase tracking-widest text-base",
+                    theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+                  )}>Settings</span>
+                </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 md:gap-4 w-full px-2">
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={onExit} className={cn(
+                "text-duo-gray transition-colors",
+                theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white"
+              )}>
+                <X className="w-6 h-6 md:w-7 md:h-7" strokeWidth={2.5} />
+              </button>
+              <button className={cn(
+                "text-duo-gray transition-colors hidden sm:block",
+                theme === 'light' ? "hover:text-[#4B4B4B]" : "hover:text-white"
+              )}>
+                <Settings className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className={cn(
+              "flex-1 h-3 md:h-4 rounded-full overflow-hidden",
+              theme === 'light' ? "bg-[#E5E5E5]" : "bg-duo-border"
             )}>
-              {profile?.is_subscribed ? <InfinityIcon className="w-5 h-5 md:w-6 md:h-6" strokeWidth={3} /> : (profile?.hearts ?? 5)}
-            </span>
+              <div
+                className="h-full bg-duo-green transition-all duration-700 relative rounded-full"
+                style={{ width: `${progress}%` }}
+              >
+                <div className="absolute top-1 left-2 right-2 h-1 bg-white/20 rounded-full" />
+              </div>
+            </div>
+
+            <div className="hidden md:flex items-center gap-1.5 md:gap-2">
+              <img src={hearts} alt="Hearts" className="w-6 h-6 md:w-8 md:h-8 shrink-0 object-contain" />
+              <span className={cn(
+                "font-bold text-base md:text-xl",
+                profile?.is_subscribed ? "text-duo-blue" : "text-duo-red"
+              )}>
+                {profile?.is_subscribed ? <InfinityIcon className="w-5 h-5 md:w-6 md:h-6" strokeWidth={3} /> : (profile?.hearts ?? 5)}
+              </span>
+            </div>
           </div>
         </header>
 
@@ -525,10 +712,10 @@ export const LessonPage = ({
           <div className="w-full max-w-3xl mx-auto">
             
             {/* Question Header Layout */}
-            <div className={cn("w-full", currentChallenge.type === 'SELECT_IMAGE' ? "mb-12" : "mb-10")}>
+            <div className={cn("w-full", currentChallenge.type === 'SELECT_IMAGE' ? "mb-8 md:mb-12" : "mb-6 md:mb-10")}>
               {currentChallenge.type === 'MATCHING' && (
-                <div className="flex flex-col w-full text-left mb-8">
-                  <span className="text-duo-gray text-lg md:text-xl font-bold uppercase tracking-wider">
+                <div className="flex flex-col w-full text-left mb-6 md:mb-8">
+                  <span className="text-duo-gray text-base md:text-xl font-bold uppercase tracking-wider">
                     {instruction}
                   </span>
                 </div>
@@ -536,39 +723,47 @@ export const LessonPage = ({
               {currentChallenge.type === 'SELECT_IMAGE' ? (
                 <div className="flex flex-col text-left">
                   {instruction && (
-                    <span className="text-duo-gray text-sm md:text-base font-bold uppercase tracking-wider mb-2">
+                    <span className="text-duo-gray text-xs md:text-base font-bold uppercase tracking-wider mb-2">
                       {instruction}
                     </span>
                   )}
-                  <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                  <h1 className={cn(
+                    "text-xl md:text-3xl font-black tracking-tight",
+                    theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+                  )}>
                     "{targetText}"
                   </h1>
                 </div>
               ) : currentChallenge.type === 'LISTEN_AND_SELECT' ? (
                 <div className="flex flex-col w-full text-left">
                   {instruction && (
-                    <span className="text-duo-gray text-sm md:text-base font-bold uppercase tracking-wider mb-4">
+                    <span className="text-duo-gray text-xs md:text-base font-bold uppercase tracking-wider mb-4">
                       {instruction}
                     </span>
                   )}
-                  <div className="flex justify-center min-h-23 mb-2">
+                  <div className="flex justify-center min-h-20 md:min-h-23 mb-2">
                     <button
                       onClick={handlePlayChallengeSound}
-                      className="bg-duo-green rounded-2xl p-5 border-2 border-white/20 shadow-[0_4px_0_0_#1a7f0e] hover:bg-duo-dark-green transition-all active:translate-y-0.5 active:shadow-none"
+                      className={cn(
+                        "rounded-2xl p-4 md:p-5 border-2 transition-all active:translate-y-0.5 active:shadow-none",
+                        theme === 'light' 
+                          ? "bg-duo-green border-[#46a302] shadow-[0_4px_0_0_#46a302] hover:bg-[#61e002]" 
+                          : "bg-duo-green border-white/20 shadow-[0_4px_0_0_#1a7f0e] hover:bg-duo-dark-green"
+                      )}
                     >
-                      <img src={speakerIcon} alt="Speaker" className="w-12 h-12" />
+                      <img src={speakerIcon} alt="Speaker" className="w-10 h-10 md:w-12 md:h-12" />
                     </button>
                   </div>
                 </div>
               ) : currentChallenge.type === 'SELECT' || currentChallenge.type === 'ASSIST' ? (
                 <div className="flex flex-col w-full">
                   {instruction && (
-                    <span className="text-duo-gray text-sm md:text-base font-bold uppercase tracking-wider mb-6 text-left">
+                    <span className="text-duo-gray text-xs md:text-base font-bold uppercase tracking-wider mb-4 md:mb-6 text-left">
                       {instruction}
                     </span>
                   )}
                   <div className="flex items-center gap-4 w-full">
-                    <div className="w-24 h-24 relative shrink-0 flex items-center justify-center">
+                    <div className="w-16 h-16 md:w-24 md:h-24 relative shrink-0 flex items-center justify-center">
                     <img src={jason} alt="Character" className="w-full h-full object-contain" />
                   </div>
                     <div className="w-fit">
@@ -582,9 +777,9 @@ export const LessonPage = ({
             {/* Interactive Options Area */}
             <div className="w-full">
               {currentChallenge.type === 'MATCHING' ? (
-                <div className="flex flex-col md:flex-row justify-center gap-4 w-full max-w-3xl mx-auto">
+                <div className="flex flex-row justify-center gap-2 md:gap-4 w-full max-w-3xl mx-auto mt-6 md:mt-10">
                   {/* Left Column */}
-                  <div className="flex flex-col gap-2 w-full md:w-1/2">
+                  <div className="flex flex-col gap-2 w-1/2">
                     {leftOptions.map((option, index) => {
                       const isSelected = selectedPair.some(p => p.id === option.id)
                       const isSolved = solvedPairs.includes(option.pair_id!)
@@ -595,19 +790,29 @@ export const LessonPage = ({
                           onClick={() => handleMatchingClick(option)}
                           disabled={status !== 'idle' || isSolved || selectedPair.length === 2}
                           className={cn(
-                            "bg-duo-dark border-2 rounded-xl p-3 flex items-center justify-start cursor-pointer transition-all active:translate-y-0.5 active:shadow-none min-h-20 text-left w-full",
-                            status === 'idle' && !isSolved && "border-duo-border shadow-[0_3px_0_0_#37464f] hover:bg-white/5",
-                            isWrong && "border-duo-red bg-duo-red/10 shadow-none",
-                            isSelected && !isSolved && !isWrong && "border-duo-sky-light bg-duo-sky-light/10 shadow-none",
-                            isSolved && "border-transparent bg-duo-green/20 opacity-40 pointer-events-none",
+                            "border-2 rounded-xl p-2 md:p-3 flex items-center justify-center cursor-pointer transition-all active:translate-y-0.5 active:shadow-none min-h-14 md:min-h-18 text-center w-full",
+                            theme === 'light' ? "bg-white" : "bg-duo-dark",
+                            // Default state (including when status is not idle)
+                            !isSelected && !isSolved && !isWrong && (
+                              theme === 'light'
+                                ? "border-[#E5E5E5] shadow-[0_3px_0_0_#E5E5E5]"
+                                : "border-duo-border shadow-[0_3px_0_0_#37464f]"
+                            ),
+                            // Hover only when idle
+                            status === 'idle' && !isSelected && !isSolved && (
+                              theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
+                            ),
+                            isWrong && "border-duo-red bg-duo-red/10 shadow-[0_3px_0_0_#d33131]",
+                            isSelected && !isSolved && !isWrong && (theme === 'light' ? "border-[#afafaf] shadow-[0_3px_0_0_#afafaf] bg-[#afafaf]/10" : "border-white shadow-[0_3px_0_0_#ffffff] bg-white/10"),
+                            isSolved && "border-duo-green bg-duo-green/10 shadow-[0_3px_0_0_#46a302] opacity-40 pointer-events-none",
                             status !== 'idle' && !isSelected && !isSolved && "opacity-50"
                           )}
                         >
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center justify-center w-10 h-10 border-2 border-duo-border rounded-lg bg-duo-dark/50">
-                              <span className="text-white font-bold text-base">{index + 1}</span>
-                            </div>
-                            <span className="text-white text-base font-bold font-khmer">
+                          <div className="flex flex-col items-center justify-center">
+                            <span className={cn(
+                              "text-sm md:text-base font-bold font-khmer",
+                              theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+                            )}>
                               {option.text}
                             </span>
                           </div>
@@ -617,7 +822,7 @@ export const LessonPage = ({
                   </div>
 
                   {/* Right Column */}
-                  <div className="flex flex-col gap-2 w-full md:w-1/2">
+                  <div className="flex flex-col gap-2 w-1/2">
                     {rightOptions.map((option, index) => {
                       const isSelected = selectedPair.some(p => p.id === option.id)
                       const isSolved = solvedPairs.includes(option.pair_id!)
@@ -628,28 +833,36 @@ export const LessonPage = ({
                           onClick={() => handleMatchingClick(option)}
                           disabled={status !== 'idle' || isSolved || selectedPair.length === 2}
                           className={cn(
-                            "bg-duo-dark border-2 rounded-xl p-3 flex items-center justify-start cursor-pointer transition-all active:translate-y-0.5 active:shadow-none min-h-20 text-left w-full",
-                            status === 'idle' && !isSolved && "border-duo-border shadow-[0_3px_0_0_#37464f] hover:bg-white/5",
-                            isWrong && "border-duo-red bg-duo-red/10 shadow-none",
-                            isSelected && !isSolved && !isWrong && "border-duo-sky-light bg-duo-sky-light/10 shadow-none",
-                            isSolved && "border-transparent bg-duo-green/20 opacity-40 pointer-events-none",
+                            "border-2 rounded-xl p-2 md:p-3 flex items-center justify-center cursor-pointer transition-all active:translate-y-0.5 active:shadow-none min-h-14 md:min-h-18 text-center w-full",
+                            theme === 'light' ? "bg-white" : "bg-duo-dark",
+                            // Default state (including when status is not idle)
+                            !isSelected && !isSolved && !isWrong && (
+                              theme === 'light'
+                                ? "border-[#E5E5E5] shadow-[0_3px_0_0_#E5E5E5]"
+                                : "border-duo-border shadow-[0_3px_0_0_#37464f]"
+                            ),
+                            // Hover only when idle
+                            status === 'idle' && !isSelected && !isSolved && (
+                              theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
+                            ),
+                            isWrong && "border-duo-red bg-duo-red/10 shadow-[0_3px_0_0_#d33131]",
+                            isSelected && !isSolved && !isWrong && (theme === 'light' ? "border-[#afafaf] shadow-[0_3px_0_0_#afafaf] bg-[#afafaf]/10" : "border-white shadow-[0_3px_0_0_#ffffff] bg-white/10"),
+                            isSolved && "border-duo-green bg-duo-green/10 shadow-[0_3px_0_0_#46a302] opacity-40 pointer-events-none",
                             status !== 'idle' && !isSelected && !isSolved && "opacity-50"
                           )}
                         >
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center justify-center w-10 h-10 border-2 border-duo-border rounded-lg bg-duo-dark/50">
-                              <span className="text-white font-bold text-base">{index + 1 + leftOptions.length}</span>
-                            </div>
-                            <div className="flex flex-col items-start">
-                              {option.phonetic && (
-                                <span className="text-[12px] font-bold text-duo-gray leading-none mb-1 block">
-                                  {option.phonetic}
-                                </span>
-                              )}
-                              <span className="text-white text-base font-bold font-khmer">
-                                {option.text}
+                          <div className="flex flex-col items-center justify-center">
+                            {option.phonetic && (
+                              <span className="text-[10px] md:text-[12px] font-bold text-duo-gray leading-none mb-1 block">
+                                {option.phonetic}
                               </span>
-                            </div>
+                            )}
+                            <span className={cn(
+                              "text-sm md:text-base font-bold font-khmer",
+                              theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+                            )}>
+                              {option.text}
+                            </span>
                           </div>
                         </button>
                       )
@@ -659,20 +872,31 @@ export const LessonPage = ({
               ) : currentChallenge.type === 'LISTEN_AND_SELECT' ? (
                 <>
                   {/* Word Bank Selection Drop Zone */}
-                  <div className="flex items-center gap-3 p-4 border-b-2 border-duo-border h-24 w-full mb-8 flex-wrap">
+                  <div className={cn(
+                    "flex items-center gap-3 p-3 md:p-4 border-b-2 h-20 md:h-24 w-full mb-6 md:mb-8 flex-wrap",
+                    theme === 'light' ? "border-[#E5E5E5]" : "border-duo-border"
+                  )}>
                     {selectedSequence.map((option, index) => (
                       <button
                         key={`${option.id}-${index}`}
                         onClick={() => handleSequenceClick(index)}
                         disabled={status !== 'idle'}
-                        className="flex flex-col items-center justify-center px-5 py-2.5 border-2 rounded-xl transition-all bg-duo-dark border-duo-border shadow-[0_2px_0_0_#37464f]"
+                        className={cn(
+                          "flex flex-col items-center justify-center px-3 py-2 md:px-5 md:py-2.5 border-2 rounded-xl transition-all",
+                          theme === 'light' 
+                            ? "bg-white border-[#E5E5E5] shadow-[0_2px_0_0_#E5E5E5]" 
+                            : "bg-duo-dark border-duo-border shadow-[0_2px_0_0_#37464f]"
+                        )}
                       >
                         {option.phonetic && (
-                          <span className="text-[11px] font-bold text-duo-gray leading-none mb-1 block">
+                          <span className="text-[10px] md:text-[11px] font-bold text-duo-gray leading-none mb-1 block">
                             {option.phonetic}
                           </span>
                         )}
-                        <span className="text-white font-bold font-khmer text-base leading-tight">
+                        <span className={cn(
+                          "font-bold font-khmer text-sm md:text-base leading-tight",
+                          theme === 'light' ? "text-[#4B4B4B]" : "text-white"
+                        )}>
                           {option.text}
                         </span>
                       </button>
@@ -680,7 +904,7 @@ export const LessonPage = ({
                   </div>
 
                   {/* Word Bank Choices */}
-                  <div className="flex flex-wrap justify-center gap-3.5">
+                  <div className="flex flex-wrap justify-center gap-2 md:gap-3.5">
                     {options.map(option => {
                       const isInSequence = selectedSequence.find(item => item.id === option.id)
                       return (
@@ -689,20 +913,34 @@ export const LessonPage = ({
                           disabled={status !== 'idle' || !!isInSequence}
                           onClick={() => handleWordBankClick(option)}
                           className={cn(
-                            "flex flex-col items-center justify-center px-6 py-3 border-2 rounded-xl transition-all active:translate-y-0.5 active:shadow-none min-h-16 min-w-24 bg-duo-dark",
-                            status === 'idle' && !isInSequence && "border-duo-border shadow-[0_3px_0_0_#37464f] hover:bg-white/5",
-                            isInSequence && "opacity-20 bg-duo-border/10 border-dashed",
+                            "flex flex-col items-center justify-center px-4 py-2 md:px-6 md:py-3 border-2 rounded-xl transition-all active:translate-y-0.5 active:shadow-none min-h-12 md:min-h-16 min-w-20 md:min-w-24",
+                            theme === 'light' ? "bg-white" : "bg-duo-dark",
+                            // Default state (including when status is not idle)
+                            !isInSequence && (
+                              theme === 'light'
+                                ? "border-[#E5E5E5] shadow-[0_3px_0_0_#E5E5E5]"
+                                : "border-duo-border shadow-[0_3px_0_0_#37464f]"
+                            ),
+                            // Hover only when idle
+                            status === 'idle' && !isInSequence && (
+                              theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
+                            ),
+                            isInSequence && (
+                              theme === 'light'
+                                ? "opacity-20 bg-[#E5E5E5]/30 border-dashed"
+                                : "opacity-20 bg-duo-border/10 border-dashed"
+                            ),
                             status !== 'idle' && !isInSequence && "opacity-50"
                           )}
                         >
                           {!isInSequence && option.phonetic && (
-                            <span className="text-[12px] font-bold text-duo-gray leading-none mb-1 block">
+                            <span className="text-[10px] md:text-[12px] font-bold text-duo-gray leading-none mb-1 block">
                               {option.phonetic}
                             </span>
                           )}
                           <span className={cn(
-                            "font-bold font-khmer text-lg leading-tight block",
-                            isInSequence ? "text-transparent" : "text-white"
+                            "font-bold font-khmer text-base md:text-lg leading-tight block",
+                            isInSequence ? "text-transparent" : (theme === 'light' ? "text-[#4B4B4B]" : "text-white")
                           )}>
                             {option.text}
                           </span>
@@ -724,28 +962,44 @@ export const LessonPage = ({
                         disabled={status !== 'idle'}
                         onClick={() => handleOptionClick(option)}
                         className={cn(
-                          "bg-duo-dark border-2 rounded-xl p-5 flex flex-col items-center justify-between cursor-pointer transition-all active:translate-y-0.5 active:shadow-none relative min-h-64 w-full",
-                          status === 'idle' && "border-duo-border shadow-[0_3px_0_0_#37464f] hover:bg-white/5",
-                          isSelected && status === 'idle' && "border-duo-sky-light bg-duo-sky-light/10 shadow-none",
-                          isCorrect && "border-duo-green bg-duo-green/10 shadow-none",
-                          isWrong && "border-duo-red bg-duo-red/10 shadow-none",
+                          "border-2 rounded-xl p-2 md:p-5 flex flex-col items-center justify-between cursor-pointer transition-all active:translate-y-0.5 active:shadow-none relative min-h-40 md:min-h-64 w-full",
+                          theme === 'light' ? "bg-white" : "bg-duo-dark",
+                          // Default state (including when status is not idle)
+                          !isSelected && !isCorrect && !isWrong && (
+                            theme === 'light'
+                              ? "border-[#E5E5E5] shadow-[0_3px_0_0_#E5E5E5]"
+                              : "border-duo-border shadow-[0_3px_0_0_#37464f]"
+                          ),
+                          // Hover only when idle
+                          status === 'idle' && !isSelected && (
+                            theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
+                          ),
+                          isSelected && status === 'idle' && (theme === 'light' ? "border-[#afafaf] shadow-[0_3px_0_0_#afafaf] bg-[#afafaf]/10" : "border-white shadow-[0_3px_0_0_#ffffff] bg-white/10"),
+                          isCorrect && "border-duo-green bg-duo-green/10 shadow-[0_3px_0_0_#46a302]",
+                          isWrong && "border-duo-red bg-duo-red/10 shadow-[0_3px_0_0_#d33131]",
                           status !== 'idle' && !isSelected && "opacity-50"
                         )}
                       >
                         <div className={cn(
-                          "absolute bottom-3 right-3 w-6 h-6 border-2 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 transition-colors",
-                          status === 'idle' && "border-duo-border text-duo-gray",
+                          "absolute bottom-2 left-2 md:bottom-3 md:left-3 w-5 h-5 md:w-6 md:h-6 border-2 rounded-lg flex items-center justify-center text-[9px] md:text-[10px] font-black shrink-0 transition-colors",
+                          (!isCorrect && !isWrong) && (
+                            theme === 'light' ? "border-[#E5E5E5] text-[#AFAFAF]" : "border-duo-border text-duo-gray"
+                          ),
                           isCorrect && "border-duo-green text-duo-green",
                           isWrong && "border-duo-red text-duo-red"
                         )}>
                           {index + 1}
                         </div>
-                        {option.image_src && <img src={option.image_src} alt={option.text} className="w-full h-28 object-contain mb-3" />}
+                        {option.image_src && (
+                          <div className="flex-1 flex items-center justify-center w-full min-h-0 mb-2">
+                            <img src={option.image_src} alt={option.text} className="w-12 h-12 md:w-20 md:h-20 object-contain" />
+                          </div>
+                        )}
                         <div className="flex flex-col items-center">
                           {option.phonetic && (
                             <span className={cn(
-                              "text-[13px] font-bold transition-colors leading-none mb-1 block",
-                              status === 'idle' && "text-duo-gray",
+                              "text-[12px] md:text-[13px] font-bold transition-colors leading-none mb-1 block",
+                              (!isCorrect && !isWrong) ? "text-duo-gray" : "",
                               isCorrect && "text-duo-green",
                               isWrong && "text-duo-red"
                             )}>
@@ -753,7 +1007,8 @@ export const LessonPage = ({
                             </span>
                           )}
                           <span className={cn(
-                            "text-white text-base font-bold text-center block",
+                            "text-sm md:text-base font-bold text-center block font-khmer",
+                            (!isCorrect && !isWrong) && (theme === 'light' ? "text-[#4B4B4B]" : "text-white"),
                             isCorrect && "text-duo-green",
                             isWrong && "text-duo-red"
                           )}>
@@ -778,17 +1033,29 @@ export const LessonPage = ({
                         disabled={status !== 'idle'}
                         onClick={() => handleOptionClick(option)}
                         className={cn(
-                          "flex items-center px-5 py-4.5 border-2 rounded-xl transition-all group relative active:translate-y-0.5 active:shadow-none min-h-20 bg-duo-dark w-full",
-                          status === 'idle' && "border-duo-border shadow-[0_3px_0_0_#37464f] hover:bg-white/5",
-                          isSelected && status === 'idle' && "border-duo-sky-light bg-duo-sky-light/10 shadow-none",
-                          isCorrect && "border-duo-green bg-duo-green/10 shadow-none",
-                          isWrong && "border-duo-red bg-duo-red/10 shadow-none",
+                          "flex items-center px-4 py-3 md:px-5 md:py-4.5 border-2 rounded-xl transition-all group relative active:translate-y-0.5 active:shadow-none min-h-16 md:min-h-20 w-full",
+                          theme === 'light' ? "bg-white" : "bg-duo-dark",
+                          // Default state (including when status is not idle)
+                          !isSelected && !isCorrect && !isWrong && (
+                            theme === 'light'
+                              ? "border-[#E5E5E5] shadow-[0_3px_0_0_#E5E5E5]"
+                              : "border-duo-border shadow-[0_3px_0_0_#37464f]"
+                          ),
+                          // Hover only when idle
+                          status === 'idle' && !isSelected && (
+                            theme === 'light' ? "hover:bg-[#F7F7F7]" : "hover:bg-white/5"
+                          ),
+                          isSelected && status === 'idle' && (theme === 'light' ? "border-[#afafaf] shadow-[0_3px_0_0_#afafaf] bg-[#afafaf]/10" : "border-white shadow-[0_3px_0_0_#ffffff] bg-white/10"),
+                          isCorrect && "border-duo-green bg-duo-green/10 shadow-[0_3px_0_0_#46a302]",
+                          isWrong && "border-duo-red bg-duo-red/10 shadow-[0_3px_0_0_#d33131]",
                           status !== 'idle' && !isSelected && "opacity-50"
                         )}
                       >
                         <div className={cn(
-                          "w-6 h-6 border-2 rounded-lg flex items-center justify-center text-[11px] font-black mr-4 shrink-0 transition-colors",
-                          status === 'idle' && "border-duo-border text-duo-gray",
+                          "w-5 h-5 md:w-6 md:h-6 border-2 rounded-lg flex items-center justify-center text-[10px] md:text-[11px] font-black absolute left-4 md:left-5 top-1/2 -translate-y-1/2 shrink-0 transition-colors",
+                          (!isCorrect && !isWrong) && (
+                            theme === 'light' ? "border-[#E5E5E5] text-[#AFAFAF]" : "border-duo-border text-duo-gray"
+                          ),
                           isCorrect && "border-duo-green text-duo-green",
                           isWrong && "border-duo-red text-duo-red"
                         )}>
@@ -798,8 +1065,8 @@ export const LessonPage = ({
                         <div className="flex-1 flex flex-col items-center justify-center">
                           {option.phonetic && (
                             <span className={cn(
-                              "text-[13px] font-bold transition-colors leading-none mb-1.5 block",
-                              status === 'idle' && "text-duo-gray",
+                              "text-[12px] md:text-[13px] font-bold transition-colors leading-none mb-1 md:mb-1.5 block",
+                              (!isCorrect && !isWrong) ? "text-duo-gray" : "",
                               isCorrect && "text-duo-green",
                               isWrong && "text-duo-red"
                             )}>
@@ -807,8 +1074,8 @@ export const LessonPage = ({
                             </span>
                           )}
                           <span className={cn(
-                            "text-xl font-black font-khmer transition-colors leading-tight block",
-                            status === 'idle' && "text-white",
+                            "text-lg md:text-xl font-black font-khmer transition-colors leading-tight block",
+                            (!isCorrect && !isWrong) && (theme === 'light' ? "text-[#4B4B4B]" : "text-white"),
                             isCorrect && "text-duo-green",
                             isWrong && "text-duo-red"
                           )}>
@@ -826,25 +1093,31 @@ export const LessonPage = ({
         </main>
 
         {/* Footer */}
-        <footer className="border-t-2 py-6 md:py-10 px-4 transition-colors duration-300 border-duo-border bg-duo-dark shrink-0">
-          <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
+        <footer className={cn(
+          "border-t-2 py-6 md:py-10 px-4 transition-colors duration-300 shrink-0",
+          theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-duo-dark border-duo-border"
+        )}>
+          <div className="max-w-5xl mx-auto flex flex-col-reverse md:flex-row items-center justify-between gap-4 md:gap-0">
             <div className="flex items-center gap-4 w-full md:w-auto">
               {status === 'idle' ? (
-                <Button variant="ghost" className="flex-1 md:flex-none md:px-16 py-4 md:py-5" onClick={handleSkip}>
+                <Button variant="ghost" className="flex-1 md:flex-none md:px-16 py-3 md:py-5 text-sm md:text-base" onClick={handleSkip}>
                   Skip
                 </Button>
               ) : (
-                <div className="flex items-center gap-3 md:gap-5">
-                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center bg-[#202f36] shrink-0">
+                <div className="flex items-center gap-2 md:gap-5">
+                  <div className={cn(
+                    "w-10 h-10 md:w-16 md:h-16 rounded-full flex items-center justify-center shrink-0",
+                    theme === 'light' ? "bg-[#F7F7F7]" : "bg-[#202f36]"
+                  )}>
                     {status === 'correct' ? (
-                      <CheckCircle2 className="w-7 h-7 md:w-10 md:h-10 text-duo-green" fill="currentColor" stroke="#202f36" />
+                      <CheckCircle2 className="w-6 h-6 md:w-10 md:h-10 text-duo-green" fill="currentColor" stroke={theme === 'light' ? "#F7F7F7" : "#202f36"} />
                     ) : (
-                      <X className="w-7 h-7 md:w-10 md:h-10 text-duo-red" strokeWidth={4} />
+                      <X className="w-6 h-6 md:w-10 md:h-10 text-duo-red" strokeWidth={4} />
                     )}
                   </div>
                   <div className="flex flex-col">
                     <h2 className={cn(
-                      "text-xl md:text-2xl font-black",
+                      "text-lg md:text-2xl font-black",
                       status === 'correct' ? "text-duo-green" : "text-duo-red"
                     )}>
                       {status === 'correct' ? 'Amazing!' : 'Correct solution:'}
@@ -853,11 +1126,11 @@ export const LessonPage = ({
                     {status === 'wrong' && (
                       <div className="flex flex-col mb-1">
                         {options.find(o => o.is_correct)?.phonetic && (
-                          <span className="text-duo-red font-bold text-xs md:text-sm">
+                          <span className="text-duo-red font-bold text-[10px] md:text-sm">
                             {options.find(o => o.is_correct)?.phonetic}
                           </span>
                         )}
-                        <span className="text-duo-red font-black text-base md:text-lg font-khmer">
+                        <span className="text-duo-red font-black text-sm md:text-lg font-khmer">
                           {options.find(o => o.is_correct)?.text}
                         </span>
                       </div>
@@ -871,7 +1144,7 @@ export const LessonPage = ({
               variant={status === 'correct' ? "primary" : status === 'wrong' ? "danger" : (hasSelection ? "primary" : "ghost")}
               disabled={status === 'idle' && !hasSelection}
               className={cn(
-                "w-full md:w-auto md:px-16 py-4 md:py-5 md:min-w-50 uppercase tracking-wider font-black",
+                "w-full md:w-auto md:px-16 py-3 md:py-5 md:min-w-50 uppercase tracking-wider font-black text-sm md:text-base",
                 status === 'idle' && !hasSelection && "opacity-50 grayscale"
               )}
               onClick={status === 'idle' ? handleCheck : (status === 'wrong' ? () => setStatus('idle') : handleContinue)}

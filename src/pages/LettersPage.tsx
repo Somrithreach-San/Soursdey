@@ -124,7 +124,7 @@ export const LettersPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-4 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 sm:gap-4">
           {consonants.map((item) => (
             <LetterCard 
               key={item.id} 
@@ -154,7 +154,7 @@ export const LettersPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-4 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 sm:gap-4">
           {vowels.map((item) => (
             <LetterCard 
               key={item.id} 
@@ -184,7 +184,7 @@ export const LettersPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 sm:gap-4">
           {numbers.map((item) => (
             <LetterCard 
               key={item.id} 

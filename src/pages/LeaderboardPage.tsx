@@ -104,11 +104,11 @@ const LeaderboardPage = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-2rem)] lg:h-screen">
+    <div className="flex flex-col h-[calc(100dvh-5rem)] lg:h-screen overflow-hidden">
       {/* Fixed Header */}
       <div className={cn(
-        "sticky top-0 z-20 pt-8 pb-6 px-4 flex flex-col items-center border-b-2 bg-duo-dark",
-        theme === 'light' ? "border-[#E5E5E5]" : "border-[#37464f]"
+        "shrink-0 pt-8 pb-6 px-4 flex flex-col items-center transition-colors",
+        theme === 'light' ? "bg-white" : "bg-duo-dark"
       )}>
         <h1 className={cn(
           "text-3xl font-black uppercase tracking-tight mb-4",
