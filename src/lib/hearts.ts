@@ -1,4 +1,4 @@
-// d:\React Js\Soursdey\src\lib\hearts.ts
+// d:\React Js\Peacode\src\lib\hearts.ts
 
 // The maximum number of hearts a user can have.
 export const MAX_HEARTS = 5;

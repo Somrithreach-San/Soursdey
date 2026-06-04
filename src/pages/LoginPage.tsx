@@ -3,7 +3,7 @@ import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useUser, RateLimitError } from '../contexts/UserContext'
 import { useTheme } from '../contexts'
-import logo from '../assets/sursdey_logo.png' // Import correct logo file
+import logo from '../assets/peacode_logo.png' // Import correct logo file
 import { Loader } from '../components/ui/Loader'
 
 export const LoginPage = ({ onSignupClick }: { onSignupClick?: () => void }) => {
@@ -75,7 +75,7 @@ export const LoginPage = ({ onSignupClick }: { onSignupClick?: () => void }) => 
       )}>
         <div className="w-full max-w-md relative z-10">
           <div className="text-center mb-12 flex flex-col items-center">
-            <img src={logo} alt="Soursdey Logo" className="w-24 h-24 mb-4" />
+            <img src={logo} alt="Peacode Logo" className="w-24 h-24 mb-4" />
             <h1 className={cn(
               "text-3xl font-black tracking-tight uppercase",
               theme === 'light' ? "text-[#4B4B4B]" : "text-white"
@@ -167,9 +167,9 @@ export const LoginPage = ({ onSignupClick }: { onSignupClick?: () => void }) => 
       <div className="w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-12 flex flex-col items-center">
-          <img src={logo} alt="Soursdey Logo" className="w-24 h-24 mb-4" />
+          <img src={logo} alt="Peacode Logo" className="w-24 h-24 mb-4" />
           <h1 className="text-5xl font-black text-duo-green tracking-tighter mb-2">
-            Soursdey
+            Peacode
           </h1>
           <p className="text-duo-gray font-bold">Welcome back!</p>
         </div>

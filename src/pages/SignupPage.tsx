@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useUser, useTheme } from '../contexts'
-import logo from '../assets/sursdey_logo.png' // Import correct logo file
+import logo from '../assets/peacode_logo.png' // Import correct logo file
 import { Loader } from '../components/ui/Loader'
 
 export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
@@ -63,7 +63,7 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
               ? "bg-white border-[#E5E5E5] shadow-[0_8px_0_0_#E5E5E5]" 
               : "bg-[#1a232e] border-duo-border shadow-[0_8px_0_0_#202f36]"
           )}>
-            <img src={logo} alt="Soursdey Logo" className="w-20 h-20 mb-6" />
+            <img src={logo} alt="Peacode Logo" className="w-20 h-20 mb-6" />
             <h1 className="text-3xl font-black text-duo-green mb-4 uppercase tracking-wide">
               Verify Email
             </h1>
@@ -87,9 +87,9 @@ export const SignupPage = ({ onLoginClick }: { onLoginClick?: () => void }) => {
       <div className="w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-12 flex flex-col items-center">
-          <img src={logo} alt="Soursdey Logo" className="w-24 h-24 mb-4" />
+          <img src={logo} alt="Peacode Logo" className="w-24 h-24 mb-4" />
           <h1 className="text-5xl font-black text-duo-green tracking-tighter mb-2">
-            Soursdey
+            Peacode
           </h1>
           <p className="text-duo-gray font-bold">Start learning today!</p>
         </div>

@@ -10,6 +10,6 @@ export default defineConfig({
   ],
   //ngrok exposing tunnel
   server: {
-    allowedHosts: ['a7f5-96-9-69-195.ngrok-free.app']
+    allowedHosts: ['0547-58-97-226-81.ngrok-free.app']
   }
 })

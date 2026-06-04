@@ -68,7 +68,10 @@ export const Sidebar = ({
 
   const handleNavClick = (view: string, clickHandler?: () => void) => {
     if (currentView === view) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const scrollOptions: ScrollToOptions = { top: 0, behavior: 'smooth' };
+      window.scrollTo(scrollOptions);
+      document.documentElement.scrollTo(scrollOptions);
+      document.body.scrollTo(scrollOptions);
     }
     clickHandler?.();
   };
@@ -78,7 +81,7 @@ export const Sidebar = ({
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex w-72 h-screen border-r-2 border-duo-border flex-col pt-8 px-4 pb-4 fixed left-0 top-0 bg-duo-dark z-50">
         <div className="px-4 mb-10 flex items-center justify-center relative">
-          <h1 className="text-4xl font-black text-duo-green tracking-tighter">Soursdey</h1>
+          <h1 className="text-4xl font-black text-duo-green tracking-tighter">Peacode</h1>
         </div>
 
         <nav className="flex-1 space-y-3">
@@ -92,14 +95,17 @@ export const Sidebar = ({
                 href="#"
                 onClick={(e) => {
                   e.preventDefault()
-                  if (view === 'learn') handleNavClick('learn', onLearnClick)
-                  if (view === 'letters') handleNavClick('letters', onLettersClick)
-                  if (view === 'practice') handleNavClick('practice', onPracticeClick)
-                  if (view === 'leaderboard') handleNavClick('leaderboard', onLeaderboardClick)
-                  if (view === 'quests') handleNavClick('quests', onQuestsClick)
-                  if (view === 'shop') handleNavClick('shop', onStoreClick)
-                  if (view === 'profile') handleNavClick('profile', onProfileClick)
-                  if (view === 'settings') handleNavClick('settings', onSettingsClick)
+                  const handlers: { [key: string]: (() => void) | undefined } = {
+                    'learn': onLearnClick,
+                    'letters': onLettersClick,
+                    'practice': onPracticeClick,
+                    'leaderboard': onLeaderboardClick,
+                    'quests': onQuestsClick,
+                    'shop': onStoreClick,
+                    'profile': onProfileClick,
+                    'settings': onSettingsClick
+                  }
+                  handleNavClick(view, handlers[view])
                 }}
                 className={cn(
                   "sidebar-item group",
@@ -128,7 +134,7 @@ export const Sidebar = ({
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[calc(4.5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-duo-dark flex items-center justify-around px-2 z-50">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[calc(4.5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-duo-dark flex items-center justify-around px-2 z-50 border-t-2 border-duo-border">
         {menuItems.filter(item => item.view !== 'settings' && item.view !== 'shop').map((item) => {
           const { icon: Icon, label, view } = item
           const isActive = currentView === view
@@ -137,28 +143,28 @@ export const Sidebar = ({
             <button
               key={label}
               onClick={() => {
-                if (view === 'learn') handleNavClick('learn', onLearnClick)
-                if (view === 'letters') handleNavClick('letters', onLettersClick)
-                if (view === 'practice') handleNavClick('practice', onPracticeClick)
-                if (view === 'leaderboard') handleNavClick('leaderboard', onLeaderboardClick)
-                if (view === 'quests') handleNavClick('quests', onQuestsClick)
-                if (view === 'shop') handleNavClick('shop', onStoreClick)
-                if (view === 'profile') handleNavClick('profile', onProfileClick)
-                if (view === 'settings') handleNavClick('settings', onSettingsClick)
+                const handlers: { [key: string]: (() => void) | undefined } = {
+                  'learn': onLearnClick,
+                  'letters': onLettersClick,
+                  'practice': onPracticeClick,
+                  'leaderboard': onLeaderboardClick,
+                  'quests': onQuestsClick,
+                  'shop': onStoreClick,
+                  'profile': onProfileClick,
+                  'settings': onSettingsClick
+                }
+                handleNavClick(view, handlers[view])
               }}
-              className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all relative",
-                isActive ? "text-duo-green" : "text-duo-gray hover:text-white"
-              )}
+              className="flex flex-col items-center justify-center flex-1 h-full transition-all"
             >
               <div className={cn(
-                "p-1.5 rounded-xl transition-all relative",
-                isActive && "bg-duo-green/10"
+                "p-2 rounded-xl transition-all relative border-2 border-transparent",
+                isActive && "border-duo-green bg-duo-green/10"
               )}>
                 <ImageWithLoader 
                   src={Icon as string} 
                   alt={label}
-                  className="w-6 h-6"
+                  className="w-7 h-7"
                   imgClassName="object-contain"
                   loaderClassName="w-4 h-4"
                 />
@@ -166,11 +172,6 @@ export const Sidebar = ({
                   <div className="absolute -top-1.5 -right-1 bg-duo-green text-[8px] font-black px-1 py-0.5 rounded shadow-[0_1px_0_0_#46a302] text-white leading-none uppercase">
                     PRO
                   </div>
-                )}
-              </div>
-              <div className="flex flex-col items-center">
-                {isActive && (
-                  <div className="absolute -top-[2px] left-1/2 -translate-x-1/2 w-8 h-1 bg-duo-green rounded-full shadow-[0_0_8px_rgba(88,204,2,0.5)]" />
                 )}
               </div>
             </button>

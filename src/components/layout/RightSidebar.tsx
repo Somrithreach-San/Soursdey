@@ -109,7 +109,7 @@ export const RightSidebar = ({
             "font-bold text-lg mb-1.5 tracking-tight",
             theme === 'light' ? "text-[#4B4B4B]" : "text-white"
           )}>
-            {userProfile?.subscription_status === 'trialing' ? 'Soursdey Pro Trial' : 'Soursdey Pro Active'}
+            {userProfile?.subscription_status === 'trialing' ? 'Peacode Pro Trial' : 'Peacode Pro Active'}
           </h3>
           <p className="text-duo-gray text-sm leading-snug mb-4">
             {userProfile?.subscription_status === 'trialing' 

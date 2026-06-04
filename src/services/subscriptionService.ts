@@ -71,7 +71,7 @@ export async function createStripeCheckoutSession(tier: SubscriptionTier, userId
     // but Stripe API requires pre-existing Prices for subscriptions.
     // So we'll use a placeholder and expect the user to eventually add real Price IDs.
     params.append('line_items[0][price_data][currency]', 'usd')
-    params.append('line_items[0][price_data][product_data][name]', `Soursdey ${tier.toUpperCase()} Subscription`)
+    params.append('line_items[0][price_data][product_data][name]', `Peacode ${tier.toUpperCase()} Subscription`)
     params.append('line_items[0][price_data][recurring][interval]', 'month')
     params.append('line_items[0][price_data][unit_amount]', tier === 'pro' ? '299' : '499')
     params.append('line_items[0][quantity]', '1')

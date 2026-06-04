@@ -90,7 +90,7 @@ export const HeartStatusModal: FC<HeartStatusModalProps> = ({ isOpen, onClose, o
           </h2>
           <p className="text-duo-gray font-bold text-sm">
             {isSubscribed 
-              ? "You have unlimited hearts with Soursdey Pro!" 
+              ? "You have unlimited hearts with Peacode Pro!" 
               : isFull 
                 ? "Your hearts are full! Go start a lesson." 
                 : isEmpty 

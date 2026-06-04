@@ -140,7 +140,7 @@ const LeaderboardPage = () => {
         <div className="w-full max-w-xl mx-auto pt-2">
           {isLoading ? (
             <div className="flex justify-center items-center py-10">
-              <Loader className={cn("w-8 h-8", theme === 'light' ? "text-[#4b4b4b]" : "text-white")} />
+              <Loader className="w-8 h-8" />
             </div>
           ) : (
             <div className="space-y-2">
@@ -209,4 +209,3 @@ const LeaderboardPage = () => {
 }
 
 export default LeaderboardPage
-

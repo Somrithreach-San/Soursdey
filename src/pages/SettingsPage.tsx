@@ -8,7 +8,7 @@ export const SettingsPage = () => {
 
   return (
     <div className={cn(
-      "flex-1 min-h-screen p-4 md:p-8 transition-colors duration-300",
+      "flex-1 min-h-screen p-4 md:p-8",
       theme === 'light' ? "bg-[#FFFFFF]" : "bg-duo-dark"
     )}>
       <div className="max-w-2xl mx-auto">
@@ -33,7 +33,7 @@ export const SettingsPage = () => {
             
             <div className="flex items-center justify-between">
               <label className={cn(
-                "font-black text-base transition-colors",
+                "font-black text-base",
                 theme === 'light' ? "text-[#4B4B4B]" : "text-white"
               )}>
                 Dark mode
@@ -62,4 +62,3 @@ export const SettingsPage = () => {
     </div>
   )
 }
-

@@ -184,8 +184,8 @@ export const StorePage = ({ initialScrollToHearts = false }: { initialScrollToHe
       setSuccessDetails({
         title: isTrial ? 'Trial Started!' : 'Subscription Active!',
         message: isTrial 
-          ? `Your 1-week free trial of Soursdey ${tier.toUpperCase()} has started! You won't be charged until the trial ends.`
-          : `Welcome to Soursdey ${tier.toUpperCase()}! Your premium features are now active.`,
+          ? `Your 1-week free trial of Peacode ${tier.toUpperCase()} has started! You won't be charged until the trial ends.`
+          : `Welcome to Peacode ${tier.toUpperCase()}! Your premium features are now active.`,
         newHearts: profile?.hearts || 0,
         newDiamonds: profile?.diamonds || 0
       })
@@ -379,7 +379,7 @@ export const StorePage = ({ initialScrollToHearts = false }: { initialScrollToHe
                         )}
                       >
                         {isPurchasing === item.id ? (
-                          <Loader className={cn("w-4 h-4 md:w-5 md:h-5", theme === 'light' ? "text-[#4b4b4b]" : "text-white")} />
+                          <Loader className={cn("w-4 h-4 md:w-5 md:h-5")} />
                         ) : profile?.is_subscribed ? (
                           <InfinityIcon className="w-6 h-6 text-duo-blue" />
                         ) : (
@@ -439,7 +439,7 @@ export const StorePage = ({ initialScrollToHearts = false }: { initialScrollToHe
                         )}
                       >
                         {isPurchasing === item.id ? (
-                          <Loader className={cn("w-4 h-4 md:w-5 md:h-5", theme === 'light' ? "text-[#4b4b4b]" : "text-white")} />
+                          <Loader className={cn("w-4 h-4 md:w-5 md:h-5")} />
                         ) : (
                           <span className="font-black text-duo-blue uppercase tracking-widest text-[12px] md:text-base">BUY</span>
                         )}

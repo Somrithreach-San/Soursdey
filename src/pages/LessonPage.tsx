@@ -488,7 +488,7 @@ export const LessonPage = ({
   return (
     <>
       {isGameOver && (
-        <div className="fixed inset-0 bg-black/70 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 z-120 flex items-center justify-center p-4">
           <div className={cn(
             "p-6 rounded-3xl text-center border-2 max-w-[320px] w-full relative flex flex-col items-center gap-5",
             theme === 'light' ? "bg-white border-[#E5E5E5]" : "bg-[#1a232e] border-white/10"
@@ -526,7 +526,7 @@ export const LessonPage = ({
       )}
 
       <div className={cn(
-        "fixed inset-0 z-[115] flex flex-col h-[100dvh] select-none",
+        "fixed inset-0 z-115 flex flex-col h-dvh select-none",
         theme === 'light' ? "bg-white" : "bg-duo-dark"
       )}>
         {/* Header */}
@@ -578,7 +578,7 @@ export const LessonPage = ({
         </header>
 
         {/* Main Content Container */}
-        <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-8 md:pt-24 pb-12 flex flex-col items-center overflow-y-auto">
+        <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-8 md:pt-24 pb-12 flex flex-col items-center">
           <div className="w-full max-w-3xl mx-auto">
             
             {/* Question Header Layout */}

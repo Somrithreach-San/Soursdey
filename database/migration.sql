@@ -1,4 +1,4 @@
--- Soursdey Database Migration
+-- Peacode Database Migration
 -- Run this SQL in your Supabase dashboard (SQL Editor)
 
 -- ============================================
